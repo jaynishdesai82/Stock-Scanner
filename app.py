@@ -28,10 +28,25 @@ def analyze_stock(ticker_symbol):
         if df.empty or len(df) < 200:
             return None
         
-        # Strategy calculations
+        # 1. Base Strategy calculations
         df['50_SMA'] = df['Close'].rolling(window=50).mean()
         df['200_SMA'] = df['Close'].rolling(window=200).mean()
         df['20_Vol_SMA'] = df['Volume'].rolling(window=20).mean()
+        
+        # 2. RSI Calculation (14-day)
+        delta = df['Close'].diff()
+        up = delta.clip(lower=0)
+        down = -1 * delta.clip(upper=0)
+        ema_up = up.ewm(com=13, adjust=False).mean()
+        ema_down = down.ewm(com=13, adjust=False).mean()
+        rs = ema_up / ema_down
+        df['RSI'] = 100 - (100 / (1 + rs))
+        
+        # 3. MACD Calculation
+        exp1 = df['Close'].ewm(span=12, adjust=False).mean()
+        exp2 = df['Close'].ewm(span=26, adjust=False).mean()
+        df['MACD'] = exp1 - exp2
+        df['Signal_Line'] = df['MACD'].ewm(span=9, adjust=False).mean()
         
         latest = df.iloc[-1]
         prev_close = df.iloc[-2]['Close']
@@ -41,21 +56,30 @@ def analyze_stock(ticker_symbol):
         sma_50 = latest['50_SMA']
         sma_200 = latest['200_SMA']
         vol_sma = latest['20_Vol_SMA']
+        rsi = latest['RSI']
+        macd = latest['MACD']
+        signal_line = latest['Signal_Line']
         
         # Rule Validation
         trend_ok = (current_price > sma_50) and (sma_50 > sma_200)
         volume_ok = current_volume > (vol_sma * volume_multiplier)
         price_ok = current_price > prev_close
         
-        # Signal assignment
-        if trend_ok and volume_ok and price_ok:
-            signal = "🚀 BUY SETUP"
+        # New Short-Term Filters
+        rsi_bullish = 60 <= rsi <= 75
+        macd_bullish = macd > signal_line
+        close_to_sma = current_price <= (sma_50 * 1.08) # Max 8% away from 50 SMA
+        
+        # Signal assignment (Strict Master Setup)
+        if trend_ok and volume_ok and price_ok and rsi_bullish and macd_bullish and close_to_sma:
+            signal = "🔥 SNIPER BUY"
+        elif trend_ok and volume_ok and price_ok:
+            signal = "🚀 BASE BUY"
         elif current_price < sma_50:
             signal = "🛑 CASH/SELL"
         else:
             signal = "⏳ HOLD / WATCH"
             
-        # Risk management calculations
         sl_price = current_price * (1 - (risk_pct / 100))
         target_3r = current_price * (1 + (risk_pct * 3 / 100))
         
@@ -63,11 +87,11 @@ def analyze_stock(ticker_symbol):
             "Ticker": ticker_symbol.replace(".NS", ""),
             "Signal": signal,
             "Price (₹)": round(current_price, 2),
-            "Vol Multiplier": round(current_volume / vol_sma, 2),
+            "RSI": round(rsi, 1),
+            "MACD Trend": "UP 📈" if macd_bullish else "DOWN 📉",
             "50 SMA (₹)": round(sma_50, 2),
-            "200 SMA (₹)": round(sma_200, 2),
             "Stop Loss (₹)": round(sl_price, 2),
-            "Target 1:3 (₹)": round(target_3r, 2)
+            "Target (₹)": round(target_3r, 2)
         }
     except:
         return None
