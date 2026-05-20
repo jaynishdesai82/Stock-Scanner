@@ -11,12 +11,17 @@ st.set_page_config(page_title="Jaynish Multi-Scanner", layout="wide")
 st.title("🏆 Jaynish Multi-Scanner")
 st.write("Real-time automated dashboard tracking institutional momentum setups.")
 
-# --- PREDEFINED WATCHLISTS ---
-NIFTY_50 = "ADANIENT, ADANIPORTS, APOLLOHOSP, ASIANPAINT, AXISBANK, BAJAJ-AUTO, BAJFINANCE, BAJAJFINSV, BPCL, BHARTIARTL, BRITANNIA, CIPLA, COALINDIA, DIVISLAB, DRREDDY, EICHERMOT, GRASIM, HCLTECH, HDFCBANK, HDFCLIFE, HEROMOTOCO, HINDALCO, HINDUNILVR, ICICIBANK, ITC, INDUSINDBK, INFY, JSWSTEEL, KOTAKBANK, LTIM, LT, M&M, MARUTI, NTPC, NESTLEIND, ONGC, POWERGRID, RELIANCE, SBILIFE, SBIN, SUNPHARMA, TCS, TATACONSUM, TATAMOTORS, TATASTEEL, TECHM, TITAN, ULTRACEMCO, WIPRO"
+# --- NSE TICK SIZE ROUNDING (0.05) ---
+def tick(val):
+    """Rounds any number to the nearest 0.05 and returns it strictly with 2 decimal places."""
+    return f"{round(float(val) * 20) / 20:.2f}"
 
-NIFTY_100 = NIFTY_50 + ", ABB, AMBUJACEM, AWL, ATGL, DMART, BAJAJHLDNG, BANKBARODA, BEL, BDL, BHARATFORG, BHEL, BOSCHLTD, CANBK, CHOLAMFIN, CGPOWER, COCHINSHIP, COLPAL, DLF, DABUR, DIXON, GAIL, GODREJCP, GODREJPROP, HAL, HAVELLS, ICICIGI, ICICIPRULI, IGL, INDHOTEL, IRFC, JIOFIN, LUPIN, MARICO, MUTHOOTFIN, NAUKRI, NHPC, PIIND, PIDILITIND, PFC, RECLTD, RVNL, SCHAEFFLER, SHREECEM, SIEMENS, SRF, TORNTPHARM, TRENT, TVSMOTOR, UBL, VEDL, ZOMATO, ZYDUSLIFE"
+# --- PERFECTED NSE WATCHLISTS ---
+NIFTY_50 = "ADANIENT, ADANIPORTS, APOLLOHOSP, ASIANPAINT, AXISBANK, BAJAJ-AUTO, BAJFINANCE, BAJAJFINSV, BPCL, BHARTIARTL, BRITANNIA, CIPLA, COALINDIA, DIVISLAB, DRREDDY, EICHERMOT, GRASIM, HCLTECH, HDFCBANK, HDFCLIFE, HEROMOTOCO, HINDALCO, HINDUNILVR, ICICIBANK, INDUSINDBK, INFY, ITC, JSWSTEEL, KOTAKBANK, LT, LTIM, M&M, MARUTI, NESTLEIND, NTPC, ONGC, POWERGRID, RELIANCE, SBILIFE, SBIN, SHRIRAMFIN, SUNPHARMA, TATACONSUM, TATAMOTORS, TATASTEEL, TCS, TECHM, TITAN, ULTRACEMCO, WIPRO"
 
-NIFTY_200 = NIFTY_100 + ", ABCAPITAL, ABFRL, ACC, AUBANK, AUROPHARMA, BATAINDIA, BERGEPAINT, BIOCON, BSE, CDSL, CONCOR, COROMANDEL, CROMPTON, CUMMINSIND, CYIENT, DALBHARAT, DEEPAKNITR, ESCORTS, EXIDEIND, FACT, FEDERALBNK, FORTIS, GLAND, GLENMARK, GMRINFRA, GUJGASLTD, HINDCOPPER, HINDPETRO, IDBI, IDFCFIRSTB, INDIANB, IPCALAB, IRCTC, JINDALSTEL, JSWENERGY, JUBLFOOD, KALYANKJIL, KANSAINER, KPITTECH, L&TFH, LICHSGFIN, LICI, MAHABANK, MANAPPURAM, MAZDOCK, MAXHEALTH, METROPOLIS, MOTILALOFS, MOTHERSON, MPHASIS, NATCOPHARM, NATIONALUM, NAVINFLUOR, NLCINDIA, NMDC, NTPC, OBERREALTY, ONGC, OIL, OFSS, PAYTM, PIIND, PAGEIND, PATANJALI, PEL, PERSISTENT, PETRONET, PNB, POLYCAB, POONAWALLA, PRESTIGE, RADICO, RBLBANK, SAIL, SBICARD, SJVN, SKFINDIA, SOBHA, SOLARINDS, SONACOMS, SUNTV, SUPREMEIND, SUZLON, SYNGENE, TATACHEM, TATACOMM, TATAELXSI, TATAPOWER, TATATECH, TIINDIA, TORNTPOWER, TRIDENT, UCOBANK, UNIONBANK, VBL, VOLTAS, YESBANK"
+NIFTY_100 = NIFTY_50 + ", ABB, AMBUJACEM, ATGL, AWL, BAJAJHLDNG, BANKBARODA, BEL, BHARATFORG, BHEL, BOSCHLTD, CANBK, CGPOWER, CHOLAMFIN, COCHINSHIP, COLPAL, DABUR, DIXON, DLF, DMART, GAIL, GODREJCP, GODREJPROP, HAL, HAVELLS, ICICIGI, ICICIPRULI, IGL, INDHOTEL, IRFC, JIOFIN, LUPIN, MARICO, MUTHOOTFIN, NAUKRI, NHPC, PIDILITIND, PIIND, PFC, RECLTD, RVNL, SCHAEFFLER, SHREECEM, SIEMENS, SRF, TORNTPHARM, TRENT, TVSMOTOR, UBL, VEDL, ZOMATO"
+
+NIFTY_200 = NIFTY_100 + ", ABCAPITAL, ABFRL, ACC, ALKEM, APARINDS, ASHOKLEY, ASTRAL, AUBANK, AUROPHARMA, BALKRISIND, BANDHANBNK, BANKINDIA, BATAINDIA, BDL, BERGEPAINT, BIOCON, BSE, CDSL, CENTURYTEX, CUB, CONCOR, COROMANDEL, CROMPTON, CUMMINSIND, CYIENT, DALBHARAT, DEEPAKNITR, DELHIVERY, DEVYANI, ESCORTS, EXIDEIND, FACT, FEDERALBNK, FORTIS, GLAND, GLENMARK, GMRINFRA, GUJGASLTD, HINDCOPPER, HINDPETRO, IDBI, IDFCFIRSTB, INDIANB, IPCALAB, IRCTC, JINDALSTEL, JSWENERGY, JUBLFOOD, KALYANKJIL, KANSAINER, KPITTECH, L&TFH, LAURUSLABS, LICHSGFIN, LICI, LODHA, MAHABANK, MANAPPURAM, MAZDOCK, MAXHEALTH, METROPOLIS, MOTILALOFS, MOTHERSON, MPHASIS, MRF, NATCOPHARM, NATIONALUM, NAVINFLUOR, NLCINDIA, NMDC, NYKAA, OBERREALTY, OFSS, OIL, PAGEIND, PATANJALI, PEL, PERSISTENT, PETRONET, PNB, POLYCAB, POONAWALLA, PRESTIGE, RADICO, RBLBANK, SAIL, SBICARD, SJVN, SKFINDIA, SOBHA, SOLARINDS, SONACOMS, SUNTV, SUPREMEIND, SUZLON, SYNGENE, TATACHEM, TATACOMM, TATAELXSI, TATAPOWER, TATATECH, TIINDIA, TORNTPOWER, TRIDENT, UCOBANK, UNIONBANK, VBL, VOLTAS, YESBANK"
 
 # --- SIDEBAR CONTROLS ---
 st.sidebar.header("⚙️ Scanner Settings")
@@ -135,20 +140,19 @@ for i, t in enumerate(ticker_list):
             else:
                 signal = "⏳ HOLD"
                 
-            # NEW LOGIC: Only hide targets if it's a SELL
             show_levels = "SELL" not in signal
                 
             results.append({
                 "Ticker": t.replace(".NS", ""),
                 "Signal": signal,
-                "Price (₹)": round(current_price, 2),
+                "Price (₹)": tick(current_price),
                 "Volume": f"{int(current_volume):,}",
                 "RSI": round(rsi, 1),
                 "MACD": "UP 📈" if macd_bullish else "DOWN 📉",
                 "Vol Mult": round(current_volume / vol_sma, 2),
-                "50 SMA (₹)": round(sma_50, 2),
-                "Stop Loss": round(sl_price, 2) if show_levels else "---",
-                "Target": round(target_3r, 2) if show_levels else "---"
+                "50 SMA (₹)": tick(sma_50),
+                "Stop Loss": tick(sl_price) if show_levels else "---",
+                "Target": tick(target_3r) if show_levels else "---"
             })
             
         # BASIC MODE
@@ -160,19 +164,18 @@ for i, t in enumerate(ticker_list):
             else:
                 signal = "⏳ HOLD"
                 
-            # NEW LOGIC: Only hide targets if it's a SELL
             show_levels = "SELL" not in signal
                 
             results.append({
                 "Ticker": t.replace(".NS", ""),
                 "Signal": signal,
-                "Price (₹)": round(current_price, 2),
+                "Price (₹)": tick(current_price),
                 "Volume": f"{int(current_volume):,}",
                 "Vol Mult": round(current_volume / vol_sma, 2),
-                "50 SMA (₹)": round(sma_50, 2),
-                "200 SMA (₹)": round(sma_200, 2),
-                "Stop Loss": round(sl_price, 2) if show_levels else "---",
-                "Target": round(target_3r, 2) if show_levels else "---"
+                "50 SMA (₹)": tick(sma_50),
+                "200 SMA (₹)": tick(sma_200),
+                "Stop Loss": tick(sl_price) if show_levels else "---",
+                "Target": tick(target_3r) if show_levels else "---"
             })
 
     except Exception as e:
