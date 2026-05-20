@@ -2,9 +2,9 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 
-st.set_page_config(page_title="Champions Club Multi-Scanner", layout="wide")
+st.set_page_config(page_title="Jaynish Multi-Scanner", layout="wide")
 
-st.title("🏆 Champions Club Multi-Stock Scanner")
+st.title("🏆 Jaynish Multi-Stock Scanner")
 st.write("Real-time automated dashboard tracking institutional momentum setups.")
 
 # --- SIDEBAR CONTROLS ---
