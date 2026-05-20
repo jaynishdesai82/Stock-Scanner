@@ -15,23 +15,18 @@ st.write("Real-time automated dashboard tracking institutional momentum setups."
 
 # --- NSE TICK SIZE ROUNDING (0.05) ---
 def tick(val):
-    """Rounds any number to the nearest 0.05 and returns it strictly with 2 decimal places."""
     return f"{round(float(val) * 20) / 20:.2f}"
-
-# --- BACKUP FALLBACK LISTS ---
-FALLBACK_NIFTY_50 = "ADANIENT, ADANIPORTS, APOLLOHOSP, ASIANPAINT, AXISBANK, BAJAJ-AUTO, BAJFINANCE, BAJAJFINSV, BPCL, BHARTIARTL, BRITANNIA, CIPLA, COALINDIA, DIVISLAB, DRREDDY, EICHERMOT, GRASIM, HCLTECH, HDFCBANK, HDFCLIFE, HEROMOTOCO, HINDALCO, HINDUNILVR, ICICIBANK, INDUSINDBK, INFY, ITC, JSWSTEEL, KOTAKBANK, LT, LTIM, M&M, MARUTI, NESTLEIND, NTPC, ONGC, POWERGRID, RELIANCE, SBILIFE, SBIN, SHRIRAMFIN, SUNPHARMA, TATACONSUM, TATAMOTORS, TATASTEEL, TCS, TECHM, TITAN, ULTRACEMCO, WIPRO"
-
-FALLBACK_NIFTY_100 = FALLBACK_NIFTY_50 + ", ABB, AMBUJACEM, ATGL, AWL, BAJAJHLDNG, BANKBARODA, BEL, BHARATFORG, BHEL, BOSCHLTD, CANBK, CGPOWER, CHOLAMFIN, COCHINSHIP, COLPAL, DABUR, DIXON, DLF, DMART, GAIL, GODREJCP, GODREJPROP, HAL, HAVELLS, ICICIGI, ICICIPRULI, IGL, INDHOTEL, IRFC, JIOFIN, LUPIN, MARICO, MUTHOOTFIN, NAUKRI, NHPC, PIDILITIND, PIIND, PFC, RECLTD, RVNL, SCHAEFFLER, SHREECEM, SIEMENS, SRF, TORNTPHARM, TRENT, TVSMOTOR, UBL, VEDL, ZOMATO"
-
-FALLBACK_NIFTY_200 = FALLBACK_NIFTY_100 + ", ABCAPITAL, ABFRL, ACC, ALKEM, APARINDS, ASHOKLEY, ASTRAL, AUBANK, AUROPHARMA, BALKRISIND, BANDHANBNK, BANKINDIA, BATAINDIA, BDL, BERGEPAINT, BIOCON, BSE, CDSL, CENTURYTEX, CUB, CONCOR, COROMANDEL, CROMPTON, CUMMINSIND, CYIENT, DALBHARAT, DEEPAKNITR, DELHIVERY, DEVYANI, ESCORTS, EXIDEIND, FACT, FEDERALBNK, FORTIS, GLAND, GLENMARK, GMRINFRA, GUJGASLTD, HINDCOPPER, HINDPETRO, IDBI, IDFCFIRSTB, INDIANB, IPCALAB, IRCTC, JINDALSTEL, JSWENERGY, JUBLFOOD, KALYANKJIL, KANSAINER, KPITTECH, L&TFH, LAURUSLABS, LICHSGFIN, LICI, LODHA, MAHABANK, MANAPPURAM, MAZDOCK, MAXHEALTH, METROPOLIS, MOTILALOFS, MOTHERSON, MPHASIS, MRF, NATCOPHARM, NATIONALUM, NAVINFLUOR, NLCINDIA, NMDC, NYKAA, OBERREALTY, OFSS, OIL, PAGEIND, PATANJALI, PEL, PERSISTENT, PETRONET, PNB, POLYCAB, POONAWALLA, PRESTIGE, RADICO, RBLBANK, SAIL, SBICARD, SJVN, SKFINDIA, SOBHA, SOLARINDS, SONACOMS, SUNTV, SUPREMEIND, SUZLON, SYNGENE, TATACHEM, TATACOMM, TATAELXSI, TATAPOWER, TATATECH, TIINDIA, TORNTPOWER, TRIDENT, UCOBANK, UNIONBANK, VBL, VOLTAS, YESBANK"
 
 # --- LIVE NSE AUTO-UPDATER ---
 @st.cache_data(ttl=86400) 
 def fetch_nse_list(index_name):
     urls = {
         "Nifty 50": "https://www.niftyindices.com/IndexConstituent/ind_nifty50list.csv",
+        "Nifty Next 50": "https://www.niftyindices.com/IndexConstituent/ind_niftynext50list.csv",
         "Nifty 100": "https://www.niftyindices.com/IndexConstituent/ind_nifty100list.csv",
-        "Nifty 200": "https://www.niftyindices.com/IndexConstituent/ind_nifty200list.csv"
+        "Nifty Midcap 100": "https://www.niftyindices.com/IndexConstituent/ind_niftymidcap100list.csv",
+        "Nifty 200": "https://www.niftyindices.com/IndexConstituent/ind_nifty200list.csv",
+        "Nifty 500": "https://www.niftyindices.com/IndexConstituent/ind_nifty500list.csv"
     }
     if index_name not in urls:
         return "RELIANCE, TCS, INFY"
@@ -42,10 +37,8 @@ def fetch_nse_list(index_name):
         df = pd.read_csv(io.StringIO(response.text))
         return ", ".join(df['Symbol'].tolist())
     except Exception:
-        if index_name == "Nifty 50": return FALLBACK_NIFTY_50
-        if index_name == "Nifty 100": return FALLBACK_NIFTY_100
-        if index_name == "Nifty 200": return FALLBACK_NIFTY_200
-        return "RELIANCE, TCS, INFY"
+        # Fallback if NSE website is down
+        return "RELIANCE, TCS, INFY, HDFCBANK, ICICIBANK, TATAMOTORS, SBIN, BHARTIARTL"
 
 # --- SIDEBAR CONTROLS ---
 st.sidebar.header("⚙️ Scanner Settings")
@@ -56,17 +49,27 @@ app_mode = st.sidebar.radio(
 )
 st.sidebar.markdown("---")
 
+# The Upgraded Dropdown Menu
 index_choice = st.sidebar.selectbox(
     "Select Market Index:",
-    ["Nifty 50", "Nifty 100", "Nifty 200", "Custom List"]
+    [
+        "Nifty 50", 
+        "Nifty Next 50", 
+        "Nifty 100", 
+        "Nifty Midcap 100", 
+        "Nifty 200", 
+        "Nifty 500", 
+        "Custom List"
+    ]
 )
 
+# UI LOGIC: Hide the text box unless "Custom List" is selected
 if index_choice == "Custom List":
-    default_text = "RELIANCE, TCS, INFY" 
+    user_stocks = st.sidebar.text_area("Watchlist (Separate with commas):", "RELIANCE, TCS, INFY", height=150)
+    ticker_list = [f"{s.strip().upper()}.NS" for s in user_stocks.split(",") if s.strip()]
 else:
-    default_text = fetch_nse_list(index_choice)
-
-user_stocks = st.sidebar.text_area("Watchlist (Separate with commas):", default_text, height=150)
+    raw_stocks = fetch_nse_list(index_choice)
+    ticker_list = [f"{s.strip().upper()}.NS" for s in raw_stocks.split(",") if s.strip()]
 
 st.sidebar.markdown("---")
 volume_multiplier = st.sidebar.slider("Volume Breakout Multiplier (x SMA)", 1.5, 3.0, 2.0, 0.1)
@@ -81,21 +84,15 @@ refresh_choice = st.sidebar.selectbox(
 )
 
 refresh_dict = {
-    "Off": 0,
-    "1 Minute": 60,
-    "2 Minutes": 120,
-    "5 Minutes": 300,
-    "10 Minutes": 600
+    "Off": 0, "1 Minute": 60, "2 Minutes": 120, "5 Minutes": 300, "10 Minutes": 600
 }
 sleep_time = refresh_dict[refresh_choice]
-
-ticker_list = [f"{s.strip().upper()}.NS" for s in user_stocks.split(",") if s.strip()]
 
 # --- DASHBOARD ENGINE ---
 results = []
 skipped_count = 0
 
-with st.spinner(f"Downloading {index_choice} live data..."):
+with st.spinner(f"Downloading {index_choice} live data (This may take a moment for large indices)..."):
     data = yf.download(ticker_list, period="1y", group_by='ticker', threads=False, progress=False)
     
 progress_text = f"Analyzing setups using {app_mode.split(' ')[1]}..."
@@ -111,7 +108,6 @@ for i, t in enumerate(ticker_list):
         else:
             df = data[t].dropna()
             
-        # The safety rule: Skip stocks without 200 days of history
         if df.empty or len(df) < 200:
             skipped_count += 1
             continue
@@ -212,8 +208,6 @@ my_bar.empty()
 # DISPLAY TABLE AND SUMMARY
 if results:
     df_results = pd.DataFrame(results)
-    
-    # --- THIS FIXES THE ZERO INDEX ISSUE ---
     df_results.index = df_results.index + 1 
     
     def color_signals(val):
@@ -223,11 +217,10 @@ if results:
         return 'background-color: #f1c40f; color: black;'
         
     styled_df = df_results.style.map(color_signals, subset=['Signal'])
-    st.dataframe(styled_df, use_container_width=True, height=500)
+    st.dataframe(styled_df, use_container_width=True, height=600)
     
-    # Let the user know if any stocks were safely skipped
     if skipped_count > 0:
-        st.caption(f"*(Note: {skipped_count} stocks were excluded from this scan because they are recent listings and do not have enough history to calculate a 200-Day Moving Average).*")
+        st.caption(f"*(Note: {skipped_count} stocks were automatically excluded from this scan because they lack the 200 days of trading history needed for moving averages).*")
     
     st.markdown("---")
     st.subheader("📋 Quick Action Summary")
