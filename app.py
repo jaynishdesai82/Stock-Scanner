@@ -14,9 +14,9 @@ st.write("Real-time automated dashboard tracking institutional momentum setups."
 # --- PREDEFINED WATCHLISTS ---
 NIFTY_50 = "ADANIENT, ADANIPORTS, APOLLOHOSP, ASIANPAINT, AXISBANK, BAJAJ-AUTO, BAJFINANCE, BAJAJFINSV, BPCL, BHARTIARTL, BRITANNIA, CIPLA, COALINDIA, DIVISLAB, DRREDDY, EICHERMOT, GRASIM, HCLTECH, HDFCBANK, HDFCLIFE, HEROMOTOCO, HINDALCO, HINDUNILVR, ICICIBANK, ITC, INDUSINDBK, INFY, JSWSTEEL, KOTAKBANK, LTIM, LT, M&M, MARUTI, NTPC, NESTLEIND, ONGC, POWERGRID, RELIANCE, SBILIFE, SBIN, SUNPHARMA, TCS, TATACONSUM, TATAMOTORS, TATASTEEL, TECHM, TITAN, ULTRACEMCO, WIPRO"
 
-NIFTY_100 = NIFTY_50 + ", ABB, AMBUJACEM, AWL, ATGL, DMART, BAJAJHLDNG, BANKBARODA, BEL, BDL, BHARATFORG, BHEL, BOSCHLTD, CANBK, CHOLAMFIN, CGPOWER, COCHINSHIP, COLPAL, DLF, DABUR, DIXON, GAIL, GODREJCP, GODREJPROP, HAL, HAVELLS, ICICIGI, ICICIPRULI, IGL, INDHOTEL, IRFC, JIOFIN, LUPIN, MARICO, MUTHOOTFIN, NAUKRI, NHPC, PIIND, PIDILITIND, PFC, RECLTD, RVNL, SCHAEFFLER, SHREECEM, SIEMENS, SRF, TORNTPHARM, TRENT, TVSMOTOR, UBL, VEDL, ZOMATO, ZYDUSLIFE"
+NIFTY_100 = NIFTY_50 + ", ABB, AMBUJACEM, AWL, ATGL, DMART, BAJAJHLDNG, BANKBARODA, BEL, BDL, BHARATFORG, BHEL, BOSCHLTD, CANBK, CHOLAMFIN, CGPOWER, COCHINSHIP, COPOL, DLF, DABUR, DIXON, GAIL, GODREJCP, GODREJPROP, HAL, HAVELLS, ICICIGI, ICICIPRULI, IGL, INDHOTEL, IRFC, JIOFIN, LUPIN, MARICO, MUTHOOTFIN, NAUKRI, NHPC, PIIND, PIDILITIND, PFC, RECLTD, RVNL, SCHAEFFLER, SHREECEM, SIEMENS, SRF, TORNTPHARM, TRENT, TVSMOTOR, UBL, VEDL, ZOMATO, ZYDUSLIFE"
 
-NIFTY_200 = NIFTY_100 + ", ABCAPITAL, ABFRL, ACC, AUBANK, AUROPHARMA, BATAINDIA, BERGEPAINT, BIOCON, BSE, CDSL, CONCOR, COROMANDEL, CROMPTON, CUMMINSIND, CYIENT, DALBHARAT, DEEPAKNITR, ESCORTS, EXIDEIND, FACT, FEDERALBNK, FORTIS, GLAND, GLENMARK, GMRINFRA, GUJGASLTD, HINDCOPPER, HINDPETRO, IDBI, IDFCFIRSTB, INDIANB, IPCALAB, IRCTC, JINDALSTEL, JSWENERGY, JUBLFOOD, KALYANKJIL, KANSAINER, KPITTECH, L&TFH, LICHSGFIN, LICI, MAHABANK, MANAPPURAM, MAZDOCK, MAXHEALTH, METROPOLIS, MOTILALOFS, MOTHERSON, MPHASIS, NATCOPHARM, NATIONALUM, NAVINFLUOR, NLCINDIA, NMDC, OBERREALTY, OFSS, OIL, PAGEIND, PATANJALI, PEL, PERSISTENT, PETRONET, PNB, POLYCAB, POONAWALLA, PRESTIGE, RADICO, RBLBANK, SAIL, SBICARD, SJVN, SKFINDIA, SOBHA, SOLARINDS, SONACOMS, SUNTV, SUPREMEIND, SUZLON, SYNGENE, TATACHEM, TATACOMM, TATAELXSI, TATAPOWER, TATATECH, TIINDIA, TORNTPOWER, TRIDENT, UCOBANK, UNIONBANK, VBL, VOLTAS, YESBANK"
+NIFTY_200 = NIFTY_100 + ", ABCAPITAL, ABFRL, ACC, AUBANK, AUROPHARMA, BATAINDIA, BERGEPAINT, BIOCON, BSE, CDSL, CONCOR, COROMANDEL, CROMPTON, CUMMINSIND, CYIENT, DALBHARAT, DEEPAKNITR, ESCORTS, EXIDEIND, FACT, FEDERALBNK, FORTIS, GLAND, GLENMARK, GMRINFRA, GUJGASLTD, HINDCOPPER, HINDPETRO, IDBI, IDFCFIRSTB, INDIANB, IPCALAB, IRCTC, JINDALSTEL, JSWENERGY, JUBLFOOD, KALYANKJIL, KANSAINER, KPITTECH, L&TFH, LICHSGFIN, LICI, MAHABANK, MANAPPURAM, MAZDOCK, MAXHEALTH, METROPOLIS, MOTILALOFS, MOTHERSON, MPHASIS, NATCOPHARM, NATIONALUM, NAVINFLUOR, NLCINDIA, NMDC, NTPC, OBERREALTY, ONGC, OIL, OFSS, PAYTM, PIIND, PAGEIND, PATANJALI, PEL, PERSISTENT, PETRONET, PNB, POLYCAB, POONAWALLA, PRESTIGE, RADICO, RBLBANK, SAIL, SBICARD, SJVN, SKFINDIA, SOBHA, SOLARINDS, SONACOMS, SUNTV, SUPREMEIND, SUZLON, SYNGENE, TATACHEM, TATACOMM, TATAELXSI, TATAPOWER, TATATECH, TIINDIA, TORNTPOWER, TRIDENT, UCOBANK, UNIONBANK, VBL, VOLTAS, YESBANK"
 
 # --- SIDEBAR CONTROLS ---
 st.sidebar.header("⚙️ Scanner Settings")
@@ -50,13 +50,11 @@ risk_pct = st.sidebar.slider("Stop Loss Risk %", 3.0, 8.0, 5.0, 0.5)
 st.sidebar.markdown("---")
 st.sidebar.subheader("🔄 Auto-Pilot")
 
-# The New Auto-Refresh Dropdown
 refresh_choice = st.sidebar.selectbox(
     "Auto-Refresh Interval:",
     ["Off", "1 Minute", "2 Minutes", "5 Minutes", "10 Minutes"]
 )
 
-# Convert the dropdown choice into actual seconds for the computer
 refresh_dict = {
     "Off": 0,
     "1 Minute": 60,
@@ -68,10 +66,9 @@ sleep_time = refresh_dict[refresh_choice]
 
 ticker_list = [f"{s.strip().upper()}.NS" for s in user_stocks.split(",") if s.strip()]
 
-# --- DASHBOARD ENGINE (Now 100% Automatic) ---
+# --- DASHBOARD ENGINE ---
 results = []
 
-# 1. BATCH DOWNLOAD
 with st.spinner(f"Downloading {index_choice} live data..."):
     data = yf.download(ticker_list, period="1y", group_by='ticker', threads=False, progress=False)
     
@@ -80,7 +77,7 @@ my_bar = st.progress(0, text=progress_text)
 
 total_stocks = len(ticker_list)
 
-# 2. ANALYSIS LOOP
+# ANALYSIS LOOP
 for i, t in enumerate(ticker_list):
     try:
         if len(ticker_list) == 1:
@@ -138,16 +135,19 @@ for i, t in enumerate(ticker_list):
             else:
                 signal = "⏳ HOLD"
                 
+            is_buy = "BUY" in signal
+                
             results.append({
                 "Ticker": t.replace(".NS", ""),
                 "Signal": signal,
                 "Price (₹)": round(current_price, 2),
+                "Volume": f"{int(current_volume):,}",
                 "RSI": round(rsi, 1),
                 "MACD": "UP 📈" if macd_bullish else "DOWN 📉",
                 "Vol Mult": round(current_volume / vol_sma, 2),
                 "50 SMA (₹)": round(sma_50, 2),
-                "Stop Loss": round(sl_price, 2),
-                "Target": round(target_3r, 2)
+                "Stop Loss": round(sl_price, 2) if is_buy else "---",
+                "Target": round(target_3r, 2) if is_buy else "---"
             })
             
         # BASIC MODE
@@ -159,15 +159,18 @@ for i, t in enumerate(ticker_list):
             else:
                 signal = "⏳ HOLD"
                 
+            is_buy = "BUY" in signal
+                
             results.append({
                 "Ticker": t.replace(".NS", ""),
                 "Signal": signal,
                 "Price (₹)": round(current_price, 2),
+                "Volume": f"{int(current_volume):,}",
                 "Vol Mult": round(current_volume / vol_sma, 2),
                 "50 SMA (₹)": round(sma_50, 2),
                 "200 SMA (₹)": round(sma_200, 2),
-                "Stop Loss": round(sl_price, 2),
-                "Target": round(target_3r, 2)
+                "Stop Loss": round(sl_price, 2) if is_buy else "---",
+                "Target": round(target_3r, 2) if is_buy else "---"
             })
 
     except Exception as e:
@@ -177,7 +180,7 @@ for i, t in enumerate(ticker_list):
     
 my_bar.empty() 
             
-# 3. DISPLAY TABLE AND SUMMARY
+# DISPLAY TABLE AND SUMMARY
 if results:
     df_results = pd.DataFrame(results)
     
