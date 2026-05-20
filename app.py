@@ -12,8 +12,9 @@ st.set_page_config(page_title="Jaynish Multi-Scanner", layout="wide")
 st.title("🏆 Jaynish Multi-Scanner")
 st.write("Real-time automated dashboard tracking institutional momentum setups.")
 
+# --- CHANGED: Keeps numbers as pure math for perfect sorting ---
 def tick(val):
-    return f"{round(float(val) * 20) / 20:.2f}"
+    return float(round(float(val) * 20) / 20)
 
 @st.cache_data(ttl=86400) 
 def fetch_nse_list(index_name):
@@ -69,7 +70,7 @@ sleep_time = refresh_dict[refresh_choice]
 results = []
 skipped_count = 0
 
-with st.spinner(f"Downloading {index_choice} live data (This may take a moment)..."):
+with st.spinner(f"Downloading {index_choice} live data..."):
     data = yf.download(ticker_list, period="1y", group_by='ticker', threads=False, progress=False)
     
 my_bar = st.progress(0, text=f"Analyzing setups using {app_mode.split(' ')[1]}...")
@@ -86,7 +87,6 @@ for i, t in enumerate(ticker_list):
             skipped_count += 1
             continue
         
-        # Base Calcs
         df['50_SMA'] = df['Close'].rolling(window=50).mean()
         df['200_SMA'] = df['Close'].rolling(window=200).mean()
         df['20_Vol_SMA'] = df['Volume'].rolling(window=20).mean()
@@ -100,9 +100,8 @@ for i, t in enumerate(ticker_list):
         sma_200 = float(latest['200_SMA'])
         vol_sma = float(latest['20_Vol_SMA'])
         
-        # NEW: 52-Week High Calculation
         high_52w = float(df['High'].max())
-        pct_from_52w = ((current_price - high_52w) / high_52w) * 100
+        pct_from_52w = float(((current_price - high_52w) / high_52w) * 100)
         
         trend_ok = (current_price > sma_50) and (sma_50 > sma_200)
         volume_ok = current_volume > (vol_sma * volume_multiplier)
@@ -111,7 +110,6 @@ for i, t in enumerate(ticker_list):
         sl_price = current_price * (1 - (risk_pct / 100))
         target_3r = current_price * (1 + (risk_pct * 3 / 100))
         
-        # Determine Signal
         if "Pro Version" in app_mode:
             delta = df['Close'].diff()
             up = delta.clip(lower=0)
@@ -146,8 +144,7 @@ for i, t in enumerate(ticker_list):
         
         show_levels = "SELL" not in signal
         
-        # NEW: Smart News Fetcher (Only fetches for Buy Setups to save time)
-        latest_news = "---"
+        latest_news = None
         if "BUY" in signal:
             try:
                 stock_info = yf.Ticker(t)
@@ -155,18 +152,17 @@ for i, t in enumerate(ticker_list):
                 if news_list and len(news_list) > 0:
                     title = news_list[0].get('title', 'News Link')
                     link = news_list[0].get('link', '#')
-                    # Formats as a clickable markdown link
                     latest_news = f"[{title[:40]}...]({link})" 
             except Exception:
                 latest_news = "News unavailable"
 
-        # Build Row Data
+        # CHANGED: All math values are kept as pure numbers (ints/floats)
         row_data = {
             "Ticker": t.replace(".NS", ""),
             "Signal": signal,
             "Price (₹)": tick(current_price),
-            "% from 52W High": f"{pct_from_52w:.1f}%",
-            "Volume": f"{int(current_volume):,}",
+            "% from 52W High": round(pct_from_52w, 1),
+            "Volume": int(current_volume),
             "RVOL": round(current_volume / vol_sma, 2)
         }
         
@@ -178,8 +174,8 @@ for i, t in enumerate(ticker_list):
             
         row_data.update({
             "50 SMA (₹)": tick(sma_50),
-            "Stop Loss": tick(sl_price) if show_levels else "---",
-            "Target": tick(target_3r) if show_levels else "---",
+            "Stop Loss (₹)": tick(sl_price) if show_levels else None,
+            "Target (₹)": tick(target_3r) if show_levels else None,
             "Latest Catalyst": latest_news
         })
         
@@ -204,22 +200,29 @@ if results:
         return 'background-color: #f1c40f; color: black;'
         
     def color_highs(val):
+        if pd.isna(val): return ''
         try:
-            num = float(val.replace('%', ''))
-            if num >= -5.0: return 'color: #2ecc71; font-weight: bold;' # Near highs
-            if num <= -30.0: return 'color: #e74c3c;' # Beaten down
+            num = float(val)
+            if num >= -5.0: return 'color: #2ecc71; font-weight: bold;' 
+            if num <= -30.0: return 'color: #e74c3c;' 
             return ''
         except: return ''
         
     styled_df = df_results.style.map(color_signals, subset=['Signal']).map(color_highs, subset=['% from 52W High'])
     
-    # Configure Streamlit to render markdown links properly
+    # CHANGED: Telling Streamlit how to visually format the pure math numbers
     st.dataframe(
         styled_df, 
         use_container_width=True, 
         height=600,
         column_config={
-            "Latest Catalyst": st.column_config.LinkColumn("Latest Catalyst")
+            "Latest Catalyst": st.column_config.LinkColumn("Latest Catalyst"),
+            "% from 52W High": st.column_config.NumberColumn("% from 52W High", format="%.1f%%"),
+            "Volume": st.column_config.NumberColumn("Volume", format="%d"),
+            "Price (₹)": st.column_config.NumberColumn("Price (₹)", format="%.2f"),
+            "50 SMA (₹)": st.column_config.NumberColumn("50 SMA (₹)", format="%.2f"),
+            "Stop Loss (₹)": st.column_config.NumberColumn("Stop Loss (₹)", format="%.2f"),
+            "Target (₹)": st.column_config.NumberColumn("Target (₹)", format="%.2f")
         }
     )
     
