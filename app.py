@@ -14,7 +14,7 @@ st.write("Real-time automated dashboard tracking institutional momentum setups."
 # --- PREDEFINED WATCHLISTS ---
 NIFTY_50 = "ADANIENT, ADANIPORTS, APOLLOHOSP, ASIANPAINT, AXISBANK, BAJAJ-AUTO, BAJFINANCE, BAJAJFINSV, BPCL, BHARTIARTL, BRITANNIA, CIPLA, COALINDIA, DIVISLAB, DRREDDY, EICHERMOT, GRASIM, HCLTECH, HDFCBANK, HDFCLIFE, HEROMOTOCO, HINDALCO, HINDUNILVR, ICICIBANK, ITC, INDUSINDBK, INFY, JSWSTEEL, KOTAKBANK, LTIM, LT, M&M, MARUTI, NTPC, NESTLEIND, ONGC, POWERGRID, RELIANCE, SBILIFE, SBIN, SUNPHARMA, TCS, TATACONSUM, TATAMOTORS, TATASTEEL, TECHM, TITAN, ULTRACEMCO, WIPRO"
 
-NIFTY_100 = NIFTY_50 + ", ABB, AMBUJACEM, AWL, ATGL, DMART, BAJAJHLDNG, BANKBARODA, BEL, BDL, BHARATFORG, BHEL, BOSCHLTD, CANBK, CHOLAMFIN, CGPOWER, COCHINSHIP, COPOL, DLF, DABUR, DIXON, GAIL, GODREJCP, GODREJPROP, HAL, HAVELLS, ICICIGI, ICICIPRULI, IGL, INDHOTEL, IRFC, JIOFIN, LUPIN, MARICO, MUTHOOTFIN, NAUKRI, NHPC, PIIND, PIDILITIND, PFC, RECLTD, RVNL, SCHAEFFLER, SHREECEM, SIEMENS, SRF, TORNTPHARM, TRENT, TVSMOTOR, UBL, VEDL, ZOMATO, ZYDUSLIFE"
+NIFTY_100 = NIFTY_50 + ", ABB, AMBUJACEM, AWL, ATGL, DMART, BAJAJHLDNG, BANKBARODA, BEL, BDL, BHARATFORG, BHEL, BOSCHLTD, CANBK, CHOLAMFIN, CGPOWER, COCHINSHIP, COLPAL, DLF, DABUR, DIXON, GAIL, GODREJCP, GODREJPROP, HAL, HAVELLS, ICICIGI, ICICIPRULI, IGL, INDHOTEL, IRFC, JIOFIN, LUPIN, MARICO, MUTHOOTFIN, NAUKRI, NHPC, PIIND, PIDILITIND, PFC, RECLTD, RVNL, SCHAEFFLER, SHREECEM, SIEMENS, SRF, TORNTPHARM, TRENT, TVSMOTOR, UBL, VEDL, ZOMATO, ZYDUSLIFE"
 
 NIFTY_200 = NIFTY_100 + ", ABCAPITAL, ABFRL, ACC, AUBANK, AUROPHARMA, BATAINDIA, BERGEPAINT, BIOCON, BSE, CDSL, CONCOR, COROMANDEL, CROMPTON, CUMMINSIND, CYIENT, DALBHARAT, DEEPAKNITR, ESCORTS, EXIDEIND, FACT, FEDERALBNK, FORTIS, GLAND, GLENMARK, GMRINFRA, GUJGASLTD, HINDCOPPER, HINDPETRO, IDBI, IDFCFIRSTB, INDIANB, IPCALAB, IRCTC, JINDALSTEL, JSWENERGY, JUBLFOOD, KALYANKJIL, KANSAINER, KPITTECH, L&TFH, LICHSGFIN, LICI, MAHABANK, MANAPPURAM, MAZDOCK, MAXHEALTH, METROPOLIS, MOTILALOFS, MOTHERSON, MPHASIS, NATCOPHARM, NATIONALUM, NAVINFLUOR, NLCINDIA, NMDC, NTPC, OBERREALTY, ONGC, OIL, OFSS, PAYTM, PIIND, PAGEIND, PATANJALI, PEL, PERSISTENT, PETRONET, PNB, POLYCAB, POONAWALLA, PRESTIGE, RADICO, RBLBANK, SAIL, SBICARD, SJVN, SKFINDIA, SOBHA, SOLARINDS, SONACOMS, SUNTV, SUPREMEIND, SUZLON, SYNGENE, TATACHEM, TATACOMM, TATAELXSI, TATAPOWER, TATATECH, TIINDIA, TORNTPOWER, TRIDENT, UCOBANK, UNIONBANK, VBL, VOLTAS, YESBANK"
 
@@ -135,7 +135,8 @@ for i, t in enumerate(ticker_list):
             else:
                 signal = "⏳ HOLD"
                 
-            is_buy = "BUY" in signal
+            # NEW LOGIC: Only hide targets if it's a SELL
+            show_levels = "SELL" not in signal
                 
             results.append({
                 "Ticker": t.replace(".NS", ""),
@@ -146,8 +147,8 @@ for i, t in enumerate(ticker_list):
                 "MACD": "UP 📈" if macd_bullish else "DOWN 📉",
                 "Vol Mult": round(current_volume / vol_sma, 2),
                 "50 SMA (₹)": round(sma_50, 2),
-                "Stop Loss": round(sl_price, 2) if is_buy else "---",
-                "Target": round(target_3r, 2) if is_buy else "---"
+                "Stop Loss": round(sl_price, 2) if show_levels else "---",
+                "Target": round(target_3r, 2) if show_levels else "---"
             })
             
         # BASIC MODE
@@ -159,7 +160,8 @@ for i, t in enumerate(ticker_list):
             else:
                 signal = "⏳ HOLD"
                 
-            is_buy = "BUY" in signal
+            # NEW LOGIC: Only hide targets if it's a SELL
+            show_levels = "SELL" not in signal
                 
             results.append({
                 "Ticker": t.replace(".NS", ""),
@@ -169,8 +171,8 @@ for i, t in enumerate(ticker_list):
                 "Vol Mult": round(current_volume / vol_sma, 2),
                 "50 SMA (₹)": round(sma_50, 2),
                 "200 SMA (₹)": round(sma_200, 2),
-                "Stop Loss": round(sl_price, 2) if is_buy else "---",
-                "Target": round(target_3r, 2) if is_buy else "---"
+                "Stop Loss": round(sl_price, 2) if show_levels else "---",
+                "Target": round(target_3r, 2) if show_levels else "---"
             })
 
     except Exception as e:
