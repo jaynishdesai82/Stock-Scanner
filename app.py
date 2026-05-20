@@ -7,11 +7,13 @@ import io
 import warnings
 warnings.filterwarnings('ignore')
 
+# --- OFFICIAL BRANDING ---
 st.set_page_config(page_title="Jaynish Multi-Scanner", layout="wide")
 
 st.title("🏆 Jaynish Multi-Scanner")
 st.write("Real-time automated dashboard tracking institutional momentum setups.")
 
+# --- NSE TICK SIZE ROUNDING (0.05) ---
 def tick(val):
     return float(round(float(val) * 20) / 20)
 
@@ -143,35 +145,17 @@ for i, t in enumerate(ticker_list):
         
         show_levels = "SELL" not in signal
         
-        # --- NEW: Phase 2 Smart Fundamentals Fetcher ---
         latest_news = None
-        pe_ratio = None
-        mkt_cap_cr = None
-        
         if "BUY" in signal:
             try:
                 stock_info = yf.Ticker(t)
-                
-                # Fetch News
                 news_list = stock_info.news
                 if news_list and len(news_list) > 0:
                     title = news_list[0].get('title', 'News Link')
                     link = news_list[0].get('link', '#')
                     latest_news = f"[{title[:40]}...]({link})" 
-                    
-                # Fetch Fundamentals
-                info = stock_info.info
-                trailing_pe = info.get('trailingPE', None)
-                if trailing_pe:
-                    pe_ratio = round(trailing_pe, 2)
-                    
-                mcap = info.get('marketCap', None)
-                if mcap:
-                    # Convert raw market cap to Crores for Indian standard reading
-                    mkt_cap_cr = int(mcap / 10000000)
-                    
             except Exception:
-                latest_news = "Data unavailable"
+                latest_news = "News unavailable"
 
         row_data = {
             "Ticker": t.replace(".NS", ""),
@@ -179,9 +163,7 @@ for i, t in enumerate(ticker_list):
             "Price (₹)": tick(current_price),
             "% from 52W High": round(pct_from_52w, 1),
             "Volume": int(current_volume),
-            "RVOL": round(current_volume / vol_sma, 2),
-            "Market Cap (Cr)": mkt_cap_cr,
-            "P/E Ratio": pe_ratio
+            "RVOL": round(current_volume / vol_sma, 2)
         }
         
         if "Pro Version" in app_mode:
@@ -228,7 +210,6 @@ if results:
         
     styled_df = df_results.style.map(color_signals, subset=['Signal']).map(color_highs, subset=['% from 52W High'])
     
-    # Adding mathematical formatting to the new Fundamental columns
     st.dataframe(
         styled_df, 
         use_container_width=True, 
@@ -237,8 +218,6 @@ if results:
             "Latest Catalyst": st.column_config.LinkColumn("Latest Catalyst"),
             "% from 52W High": st.column_config.NumberColumn("% from 52W High", format="%.1f%%"),
             "Volume": st.column_config.NumberColumn("Volume", format="%d"),
-            "Market Cap (Cr)": st.column_config.NumberColumn("Market Cap (Cr)", format="₹%d"),
-            "P/E Ratio": st.column_config.NumberColumn("P/E Ratio", format="%.2f"),
             "Price (₹)": st.column_config.NumberColumn("Price (₹)", format="%.2f"),
             "50 SMA (₹)": st.column_config.NumberColumn("50 SMA (₹)", format="%.2f"),
             "Stop Loss (₹)": st.column_config.NumberColumn("Stop Loss (₹)", format="%.2f"),
@@ -249,17 +228,28 @@ if results:
     if skipped_count > 0:
         st.caption(f"*(Note: {skipped_count} stocks were automatically excluded from this scan due to lack of historical data).*")
     
+    # --- CHANGED: LIVE LINK GENERATION FOR THE SUMMARY CARD MATRIX ---
     st.markdown("---")
     st.subheader("📋 Quick Action Summary")
     
-    sniper_stocks = df_results[df_results['Signal'] == "🔥 SNIPER BUY"]['Ticker'].tolist()
-    base_buy_stocks = df_results[df_results['Signal'].isin(["🚀 BASE BUY", "🚀 BUY SETUP"])]['Ticker'].tolist()
+    sniper_raw = df_results[df_results['Signal'] == "🔥 SNIPER BUY"]['Ticker'].tolist()
+    base_raw = df_results[df_results['Signal'].isin(["🚀 BASE BUY", "🚀 BUY SETUP"])]['Ticker'].tolist()
+    
+    # Generates HTML Clickable Anchor Tags to open TradingView India
+    sniper_links = [f'<a href="https://in.tradingview.com/chart/?symbol=NSE:{tk}" target="_blank" style="color:#8e44ad; font-weight:bold; text-decoration:none;">{tk}</a>' for tk in sniper_raw]
+    base_links = [f'<a href="https://in.tradingview.com/chart/?symbol=NSE:{tk}" target="_blank" style="color:#2ecc71; font-weight:bold; text-decoration:none;">{tk}</a>' for tk in base_raw]
     
     col1, col2 = st.columns(2)
     with col1:
-        st.info(f"**🔥 Sniper Setups:**\n\n{', '.join(sniper_stocks) if sniper_stocks else 'None right now'}")
+        st.markdown('<div style="padding:15px; border-radius:5px; background-color:#f0f4f8; border-left:5px solid #8e44ad;">'
+                    f'<strong>🔥 Sniper Setups:</strong><br><br>'
+                    f'{", ".join(sniper_links) if sniper_links else "None right now"}'
+                    '</div>', unsafe_allow_html=True)
     with col2:
-        st.success(f"**🚀 Base Breakouts:**\n\n{', '.join(base_buy_stocks) if base_buy_stocks else 'None right now'}")
+        st.markdown('<div style="padding:15px; border-radius:5px; background-color:#eef9f1; border-left:5px solid #2ecc71;">'
+                    f'<strong>🚀 Base Breakouts:</strong><br><br>'
+                    f'{", ".join(base_links) if base_links else "None right now"}'
+                    '</div>', unsafe_allow_html=True)
 
 else:
     st.error("Could not fetch data. The market might be closed or API is temporarily down.")
