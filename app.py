@@ -4,7 +4,7 @@ import pandas as pd
 
 st.set_page_config(page_title="Champions Club Multi-Scanner", layout="wide")
 
-st.title("🏆 Champions Club Multi-Stock Scanner")
+st.title("🏆 Jaynish Multi-Stock Scanner")
 st.write("Real-time automated multi-stock dashboard tracking institutional momentum setups.")
 
 # 1. Sidebar Configuration
