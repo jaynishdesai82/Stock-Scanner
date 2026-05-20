@@ -12,6 +12,10 @@ st.set_page_config(page_title="Jaynish Multi-Scanner", layout="wide", page_icon=
 st.title("🏆 Jaynish Multi-Scanner")
 st.write("Real-time automated dashboard tracking institutional momentum setups.")
 
+# --- INITIALIZE PORTFOLIO DATABASE ---
+if 'portfolio' not in st.session_state:
+    st.session_state['portfolio'] = pd.DataFrame(columns=['Ticker', 'Type', 'Entry Price', 'Quantity', 'Stop Loss', 'Target'])
+
 def tick(val):
     return float(round(float(val) * 20) / 20)
 
@@ -54,10 +58,10 @@ def fetch_nse_list(index_name):
         if index_name == "Nifty Midcap 100": return FALLBACK_NIFTY_200 
         return "RELIANCE, TCS, INFY"
 
-# --- UI TABS SETUP ---
-tab_scanner, tab_tutorial = st.tabs(["🎯 Live Market Scanner", "📖 Strategy & Logic Guide"])
+# --- UI NAVIGATION CONFIGURATION ---
+tab_scanner, tab_portfolio, tab_tutorial = st.tabs(["🎯 Live Market Scanner", "💼 My Trade Portfolio", "📖 Strategy & Logic Guide"])
 
-# --- SIDEBAR CONTROLS ---
+# --- SIDEBAR GLOBAL SYSTEM FILTERS ---
 st.sidebar.header("⚙️ Scanner Settings")
 app_mode = st.sidebar.radio("Select Scanner Mode:", ["📊 Basic Version (Trend & Volume)", "🔥 Pro Version (Sniper Metrics)"])
 st.sidebar.markdown("---")
@@ -80,9 +84,9 @@ refresh_choice = st.sidebar.selectbox("Auto-Refresh Interval:", ["Off", "1 Minut
 refresh_dict = {"Off": 0, "1 Minute": 60, "2 Minutes": 120, "5 Minutes": 300, "10 Minutes": 600}
 sleep_time = refresh_dict[refresh_choice]
 
-# ==========================================
-# TAB 1: THE SCANNER
-# ==========================================
+# =====================================================================
+# TAB 1: THE SCANNER ENGINE
+# =====================================================================
 with tab_scanner:
     results = []
     skipped_count = 0
@@ -190,7 +194,6 @@ with tab_scanner:
             smart_vwap = "---"
             
             if "BUY" in signal:
-                # News Fetcher
                 try:
                     stock_info = yf.Ticker(t)
                     news_list = stock_info.news
@@ -201,11 +204,9 @@ with tab_scanner:
                 except Exception:
                     latest_news = "News unavailable"
                     
-                # Intraday Radar & VWAP Calculator
                 try:
                     intra_data = yf.download(t, period="5d", interval="15m", progress=False)
                     if not intra_data.empty:
-                        # 15m Trend Logic
                         intra_data['20_EMA'] = intra_data['Close'].ewm(span=20, adjust=False).mean()
                         last_close = float(intra_data['Close'].iloc[-1])
                         last_ema = float(intra_data['20_EMA'].iloc[-1])
@@ -215,14 +216,12 @@ with tab_scanner:
                         else:
                             intraday_status = "💤 FADING"
                             
-                        # Smart Money VWAP Logic (Calculated for current day)
                         today_date = intra_data.index[-1].date()
                         today_data = intra_data[intra_data.index.date == today_date].copy()
                         
                         if not today_data.empty:
                             today_data['Typical_Price'] = (today_data['High'] + today_data['Low'] + today_data['Close']) / 3
                             today_data['TP_V'] = today_data['Typical_Price'] * today_data['Volume']
-                            
                             vol_sum = today_data['Volume'].sum()
                             if vol_sum > 0:
                                 final_vwap = today_data['TP_V'].sum() / vol_sum
@@ -312,7 +311,7 @@ with tab_scanner:
         st.dataframe(
             styled_df, 
             use_container_width=True, 
-            height=600,
+            height=500,
             column_config={
                 "Latest Catalyst": st.column_config.LinkColumn("Latest Catalyst"),
                 "% from 52W High": st.column_config.NumberColumn("% from 52W High", format="%.1f%%"),
@@ -358,40 +357,147 @@ with tab_scanner:
             mime="text/csv",
             use_container_width=True
         )
-
     else:
         st.error("Could not fetch data. The market might be closed or API is temporarily down.")
 
-# ==========================================
-# TAB 2: THE TUTORIAL & LOGIC GUIDE
-# ==========================================
+# =====================================================================
+# TAB 2: THE INTERACTIVE PORTFOLIO & P&L LEDGER
+# =====================================================================
+with tab_portfolio:
+    st.header("💼 My Institutional Trade Ledger")
+    st.write("Track position scaling and floating net value metrics dynamically across active trade cycles.")
+    
+    # 1. TRANSACTION LOGGING INTERFACE
+    with st.expander("➕ Log New Active Position / Trade Ticket", expanded=False):
+        form_col1, form_col2, form_col3 = st.columns(3)
+        with form_col1:
+            add_tk = st.text_input("Stock Symbol (e.g., RELIANCE, TCS):").strip().upper()
+            add_type = st.selectbox("Setup Execution Mode:", ["🔥 SNIPER", "🚀 BASE", "⏳ STRATEGIC HOLD"])
+        with form_col2:
+            add_price = st.number_input("Average Buy Entry Price (₹):", min_value=0.0, step=0.05)
+            add_qty = st.number_input("Total Share Quantity:", min_value=1, step=1)
+        with form_col3:
+            add_sl = st.number_input("Assigned Stop Loss Level (₹):", min_value=0.0, step=0.05)
+            add_tgt = st.number_input("Assigned Profit Target Level (₹):", min_value=0.0, step=0.05)
+            
+        if st.button("💾 Lock Position Into Database", use_container_width=True):
+            if add_tk:
+                new_row = pd.DataFrame([{
+                    'Ticker': add_tk, 'Type': add_type, 'Entry Price': add_price,
+                    'Quantity': add_qty, 'Stop Loss': add_sl, 'Target': add_tgt
+                }])
+                st.session_state['portfolio'] = pd.concat([st.session_state['portfolio'], new_row], ignore_index=True)
+                st.success(f"Position for {add_tk} successfully committed to ledger memory.")
+                st.rerun()
+            else:
+                st.error("Symbol input validation failed. Please provide a ticker.")
+
+    # 2. RUN REAL-TIME LEDGER VALUATION CALCULATIONS
+    if not st.session_state['portfolio'].empty:
+        portfolio_df = st.session_state['portfolio'].copy()
+        unique_tickers = [f"{tk}.NS" for tk in portfolio_df['Ticker'].unique()]
+        
+        # High-Speed Optimized Price Extraction Loop
+        with st.spinner("Synchronizing real-time floating ledger valuations..."):
+            live_data = yf.download(unique_tickers, period="1d", progress=False)
+            
+        live_prices = {}
+        for tk in portfolio_df['Ticker'].unique():
+            try:
+                if len(unique_tickers) == 1:
+                    live_prices[tk] = float(live_data['Close'].iloc[-1])
+                else:
+                    live_prices[tk] = float(live_data['Close'][f"{tk}.NS"].iloc[-1])
+            except Exception:
+                live_prices[tk] = None
+
+        # Build Financial Valuation Framework
+        portfolio_df['Live Price (₹)'] = portfolio_df['Ticker'].map(live_prices)
+        portfolio_df['Total Investment'] = portfolio_df['Entry Price'] * portfolio_df['Quantity']
+        portfolio_df['Current Value'] = portfolio_df['Live Price (₹)'].fillna(portfolio_df['Entry Price']) * portfolio_df['Quantity']
+        portfolio_df['Net P&L (₹)'] = portfolio_df['Current Value'] - portfolio_df['Total Investment']
+        portfolio_df['Total Return %'] = (portfolio_df['Net P&L (₹)'] / portfolio_df['Total Investment']) * 100
+
+        # Calculate Global Portfolio Topline Cards
+        total_capital = portfolio_df['Total Investment'].sum()
+        current_equity = portfolio_df['Current Value'].sum()
+        portfolio_pnl_rs = current_equity - total_capital
+        portfolio_pnl_pct = (portfolio_pnl_rs / total_capital * 100) if total_capital > 0 else 0.0
+
+        card_col1, card_col2, card_col3 = st.columns(3)
+        card_col1.metric("Deployed Capital", f"₹{total_capital:,.2f}")
+        card_col2.metric("Net Liquid Equity", f"₹{current_equity:,.2f}")
+        
+        # Style metrics green for positive performance, red for negative performance
+        if portfolio_pnl_rs >= 0:
+            card_col3.metric("Floating Floating Net P&L", f"₹{portfolio_pnl_rs:,.2f}", f"+{portfolio_pnl_pct:.2f}%")
+        else:
+            card_col3.metric("Floating Floating Net P&L", f"₹{portfolio_pnl_rs:,.2f}", f"{portfolio_pnl_pct:.2f}%", delta_color="inverse")
+
+        st.markdown("---")
+        st.subheader("📊 Deployed Asset Positions Breakdown")
+
+        # Visual Grid Styling Configuration
+        def style_portfolio(row):
+            pnl = row['Net P&L (₹)']
+            color = 'background-color: #eef9f1; color: #2ecc71; font-weight: bold;' if pnl >= 0 else 'background-color: #fdf2f2; color: #e74c3c;'
+            return [color if col in ['Net P&L (₹)', 'Total Return %'] else '' for col in row.index]
+
+        portfolio_df.index = portfolio_df.index + 1
+        styled_port = portfolio_df.style.apply(style_portfolio, axis=1)
+
+        st.dataframe(
+            styled_port,
+            use_container_width=True,
+            column_config={
+                "Entry Price": st.column_config.NumberColumn("Entry Price", format="%%.2f"),
+                "Live Price (₹)": st.column_config.NumberColumn("Live Price (₹)", format="₹%.2f"),
+                "Total Investment": st.column_config.NumberColumn("Total Deployed", format="₹%d"),
+                "Current Value": st.column_config.NumberColumn("Current Value", format="₹%d"),
+                "Net P&L (₹)": st.column_config.NumberColumn("Net P&L (₹)", format="₹%.2f"),
+                "Total Return %": st.column_config.NumberColumn("Total Return %", format="%.2f%%"),
+                "Stop Loss": st.column_config.NumberColumn("Stop Loss", format="%.2f"),
+                "Target": st.column_config.NumberColumn("Target", format="%.2f")
+            }
+        )
+
+        # 3. TRANSACTION CLEARANCE INTERFACE
+        st.markdown("---")
+        with st.expander("🛑 Position Clearance / Close Out Ticket", expanded=False):
+            cancel_idx = st.selectbox("Select Row Index to Liquidate / Delete:", portfolio_df.index.tolist())
+            if st.button("❌ Purge Selection From Memory", use_container_width=True):
+                # Adjust for 1-based indexing correction
+                actual_idx = cancel_idx - 1
+                st.session_state['portfolio'] = st.session_state['portfolio'].drop(st.session_state['portfolio'].index[actual_idx]).reset_index(drop=True)
+                st.warning("Ledger database row purge complete.")
+                st.rerun()
+    else:
+        st.info("Your active portfolio ledger is completely empty. Scan the market using Tab 1 and log your active positions to track returns.")
+
+# =====================================================================
+# TAB 3: THE TUTORIAL & STRATEGY GUIDE
+# =====================================================================
 with tab_tutorial:
     st.header("📖 The Jaynish Multi-Scanner Logic Guide")
     st.write("Welcome to the engine room. Here is exactly how the scanner computes data and generates trading signals.")
     
     st.markdown("---")
-    
     st.subheader("1. The Core Metrics")
     col1, col2 = st.columns(2)
     with col1:
         st.info("**📈 RVOL (Relative Volume)**\n\nVolume tells you the *truth* behind a price move. RVOL compares today's trading volume to the 20-day average. \n* **Formula:** `Current Volume / 20-Day Avg Volume`\n* **Logic:** If RVOL is 2.5x, it means institutions are buying 2.5 times heavier than normal. This confirms a true breakout.")
-        
         st.warning("**💥 The SQUEEZE (Volatility Profile)**\n\nThe Squeeze uses Bollinger Bands to find stocks that have gone completely 'quiet'. \n* **Logic:** When a stock stops moving, the Bollinger Bands compress. The engine flags a stock when its bands are 18% tighter than their 100-day average. This indicates silent institutional accumulation right before an explosive expansion phase.")
-        
         st.markdown('<div style="padding:15px; border-radius:5px; background-color:#f9f5ff; border-left:5px solid #8e44ad;">'
                     '<strong>🏦 Smart Money (VWAP)</strong><br><br>'
                     'VWAP (Volume Weighted Average Price) is the holy grail of institutional trading.<br>'
                     '<ul><li><strong>🟢 BUYING:</strong> Current price is ABOVE today\'s VWAP. Large funds are actively paying premium prices to accumulate the stock today.</li>'
                     '<li><strong>🔴 SELLING:</strong> Current price is BELOW today\'s VWAP. Funds are using the breakout volume to quietly offload their shares. Be careful!</li></ul>'
                     '</div>', unsafe_allow_html=True)
-
     with col2:
         st.success("**📊 Market RS (Relative Strength)**\n\nYou only want to buy the strongest stocks in the market. \n* **Formula:** `Stock 6-Month Return / Nifty 50 6-Month Return`\n* **Logic:** A score of `1.00x` means it matches the Nifty. A score of `1.30x` means it is vastly outperforming the index. Always focus on stocks with RS > 1.00.")
-        
         st.error("**⏱️ MTF Intraday Radar (Live 15m Trend)**\n\nA stock might look great on the Daily chart, but be crashing *today*.\n* **Logic:** When a buy signal triggers, the scanner secretly downloads the 15-minute live chart. If the current price is *above* the 15-minute 20 EMA, it is **🔥 ACTIVE**. If it drops below, momentum is **💤 FADING** and you should hold off buying.")
 
     st.markdown("---")
-    
     st.subheader("2. How Signals are Generated")
     st.markdown("""
     **🚀 Base Buy Setup (Basic Mode)**
@@ -406,11 +512,10 @@ with tab_tutorial:
     2. **MACD Filter:** The MACD line must be crossing *above* the Signal Line.
     3. **Pullback Proximity:** The price cannot be more than 8% away from the 50-Day SMA (Prevents buying extended, risky charts).
     """)
-    
     st.markdown("---")
     st.caption("Built for Institutional Momentum Trading | Designed by Jaynish")
 
-# --- AUTO REFRESH LOOP ---
+# --- GLOBAL AUTO REFRESH LOOP ---
 if sleep_time > 0:
     st.sidebar.success(f"⏱️ Auto-Pilot Active: Refreshing in {sleep_time} seconds.")
     time.sleep(sleep_time)
