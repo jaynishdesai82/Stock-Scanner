@@ -12,7 +12,6 @@ st.set_page_config(page_title="Jaynish Multi-Scanner", layout="wide")
 st.title("🏆 Jaynish Multi-Scanner")
 st.write("Real-time automated dashboard tracking institutional momentum setups.")
 
-# --- CHANGED: Keeps numbers as pure math for perfect sorting ---
 def tick(val):
     return float(round(float(val) * 20) / 20)
 
@@ -144,26 +143,45 @@ for i, t in enumerate(ticker_list):
         
         show_levels = "SELL" not in signal
         
+        # --- NEW: Phase 2 Smart Fundamentals Fetcher ---
         latest_news = None
+        pe_ratio = None
+        mkt_cap_cr = None
+        
         if "BUY" in signal:
             try:
                 stock_info = yf.Ticker(t)
+                
+                # Fetch News
                 news_list = stock_info.news
                 if news_list and len(news_list) > 0:
                     title = news_list[0].get('title', 'News Link')
                     link = news_list[0].get('link', '#')
                     latest_news = f"[{title[:40]}...]({link})" 
+                    
+                # Fetch Fundamentals
+                info = stock_info.info
+                trailing_pe = info.get('trailingPE', None)
+                if trailing_pe:
+                    pe_ratio = round(trailing_pe, 2)
+                    
+                mcap = info.get('marketCap', None)
+                if mcap:
+                    # Convert raw market cap to Crores for Indian standard reading
+                    mkt_cap_cr = int(mcap / 10000000)
+                    
             except Exception:
-                latest_news = "News unavailable"
+                latest_news = "Data unavailable"
 
-        # CHANGED: All math values are kept as pure numbers (ints/floats)
         row_data = {
             "Ticker": t.replace(".NS", ""),
             "Signal": signal,
             "Price (₹)": tick(current_price),
             "% from 52W High": round(pct_from_52w, 1),
             "Volume": int(current_volume),
-            "RVOL": round(current_volume / vol_sma, 2)
+            "RVOL": round(current_volume / vol_sma, 2),
+            "Market Cap (Cr)": mkt_cap_cr,
+            "P/E Ratio": pe_ratio
         }
         
         if "Pro Version" in app_mode:
@@ -210,7 +228,7 @@ if results:
         
     styled_df = df_results.style.map(color_signals, subset=['Signal']).map(color_highs, subset=['% from 52W High'])
     
-    # CHANGED: Telling Streamlit how to visually format the pure math numbers
+    # Adding mathematical formatting to the new Fundamental columns
     st.dataframe(
         styled_df, 
         use_container_width=True, 
@@ -219,6 +237,8 @@ if results:
             "Latest Catalyst": st.column_config.LinkColumn("Latest Catalyst"),
             "% from 52W High": st.column_config.NumberColumn("% from 52W High", format="%.1f%%"),
             "Volume": st.column_config.NumberColumn("Volume", format="%d"),
+            "Market Cap (Cr)": st.column_config.NumberColumn("Market Cap (Cr)", format="₹%d"),
+            "P/E Ratio": st.column_config.NumberColumn("P/E Ratio", format="%.2f"),
             "Price (₹)": st.column_config.NumberColumn("Price (₹)", format="%.2f"),
             "50 SMA (₹)": st.column_config.NumberColumn("50 SMA (₹)", format="%.2f"),
             "Stop Loss (₹)": st.column_config.NumberColumn("Stop Loss (₹)", format="%.2f"),
