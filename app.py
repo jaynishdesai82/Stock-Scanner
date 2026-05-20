@@ -15,7 +15,16 @@ st.write("Real-time automated dashboard tracking institutional momentum setups."
 def tick(val):
     return float(round(float(val) * 20) / 20)
 
-# --- LIVE NSE AUTO-UPDATER ---
+# --- THE MASSIVE BACKUP LISTS ---
+FALLBACK_NIFTY_50 = "ADANIENT, ADANIPORTS, APOLLOHOSP, ASIANPAINT, AXISBANK, BAJAJ-AUTO, BAJFINANCE, BAJAJFINSV, BPCL, BHARTIARTL, BRITANNIA, CIPLA, COALINDIA, DIVISLAB, DRREDDY, EICHERMOT, GRASIM, HCLTECH, HDFCBANK, HDFCLIFE, HEROMOTOCO, HINDALCO, HINDUNILVR, ICICIBANK, INDUSINDBK, INFY, ITC, JSWSTEEL, KOTAKBANK, LT, LTIM, M&M, MARUTI, NESTLEIND, NTPC, ONGC, POWERGRID, RELIANCE, SBILIFE, SBIN, SHRIRAMFIN, SUNPHARMA, TATACONSUM, TATAMOTORS, TATASTEEL, TCS, TECHM, TITAN, ULTRACEMCO, WIPRO"
+
+FALLBACK_NIFTY_100 = FALLBACK_NIFTY_50 + ", ABB, AMBUJACEM, ATGL, AWL, BAJAJHLDNG, BANKBARODA, BEL, BHARATFORG, BHEL, BOSCHLTD, CANBK, CGPOWER, CHOLAMFIN, COCHINSHIP, COLPAL, DABUR, DIXON, DLF, DMART, GAIL, GODREJCP, GODREJPROP, HAL, HAVELLS, ICICIGI, ICICIPRULI, IGL, INDHOTEL, IRFC, JIOFIN, LUPIN, MARICO, MUTHOOTFIN, NAUKRI, NHPC, PIDILITIND, PIIND, PFC, RECLTD, RVNL, SCHAEFFLER, SHREECEM, SIEMENS, SRF, TORNTPHARM, TRENT, TVSMOTOR, UBL, VEDL, ZOMATO"
+
+FALLBACK_NIFTY_200 = FALLBACK_NIFTY_100 + ", ABCAPITAL, ABFRL, ACC, ALKEM, APARINDS, ASHOKLEY, ASTRAL, AUBANK, AUROPHARMA, BALKRISIND, BANDHANBNK, BANKINDIA, BATAINDIA, BDL, BERGEPAINT, BIOCON, BSE, CDSL, CENTURYTEX, CUB, CONCOR, COROMANDEL, CROMPTON, CUMMINSIND, CYIENT, DALBHARAT, DEEPAKNITR, DELHIVERY, DEVYANI, ESCORTS, EXIDEIND, FACT, FEDERALBNK, FORTIS, GLAND, GLENMARK, GMRINFRA, GUJGASLTD, HINDCOPPER, HINDPETRO, IDBI, IDFCFIRSTB, INDIANB, IPCALAB, IRCTC, JINDALSTEL, JSWENERGY, JUBLFOOD, KALYANKJIL, KANSAINER, KPITTECH, L&TFH, LAURUSLABS, LICHSGFIN, LICI, LODHA, MAHABANK, MANAPPURAM, MAZDOCK, MAXHEALTH, METROPOLIS, MOTILALOFS, MOTHERSON, MPHASIS, MRF, NATCOPHARM, NATIONALUM, NAVINFLUOR, NLCINDIA, NMDC, NYKAA, OBERREALTY, OFSS, OIL, PAGEIND, PATANJALI, PEL, PERSISTENT, PETRONET, PNB, POLYCAB, POONAWALLA, PRESTIGE, RADICO, RBLBANK, SAIL, SBICARD, SJVN, SKFINDIA, SOBHA, SOLARINDS, SONACOMS, SUNTV, SUPREMEIND, SUZLON, SYNGENE, TATACHEM, TATACOMM, TATAELXSI, TATAPOWER, TATATECH, TIINDIA, TORNTPOWER, TRIDENT, UCOBANK, UNIONBANK, VBL, VOLTAS, YESBANK"
+
+FALLBACK_NIFTY_500 = FALLBACK_NIFTY_200 + ", 360ONE, 3MINDIA, AARTIDRUGS, AARTIIND, AAVAS, ABBOTINDIA, ADVENZYMES, AEGISCHEM, AFFLE, AJANTPHARM, AKZOINDIA, ALEMBICLTD, ALOKINDS, AMARAJABAT, AMBER, ANGELONE, ANURAS, APARINDS, APTUS, APLAPOLLO, ASANIFIN, ASTERDM, ASTRAZEN, ATUL, AVANTIFEED, BATAINDIA, BEML, BLUEDART, BLUESTARCO, BOMDYEING, BRIGADE, BSOFT, CAMPUS, CASTROLIND, CCL, CERA, CGCL, CHALET, CHAMBLFERT, CHEMPLASTS, CHENNPETRO, CAMS, CLEAN, COCHINSHIP, CRAFTSMAN, CREDITACC, CRISIL, CROMPTON, CSBBANK, CUB, CYIENT, DATAPATTNS, DEEPAKFERT, DELTACORP, DEVYANI, EIDPARRY, EIHOTEL, ENDURANCE, ENGINERSIN, EQUITASBNK, ERIS, ESCORTS, ETHER, EXIDEIND, FDC, FINCABLES, FINPIPE, FSL, GABRIEL, GARFIBRES, GEOMETRIC, GLAND, GLENMARK, GMDCLTD, GMMPFAUDLR, GODFRYPHLP, GODREJIND, GRANULES, GRAPHITE, GRINDWELL, GUJALKALI, GUJGASLTD, GNFC, GSFC, HAPPSTMNDS, HATHWAY, HEG, HFCL, HGS, HIKAL, HINDCOPPER, HINDUJAVEN, HINDZINC, HONAUT, HSCL, HUDCO, IBULHSGFIN, ICIL, IDFC, IFBIND, IGL, IIFL, INDIAMART, INDIANB, INDIGOPNTS, INDUSINDBK, INFY, INOXLEISUR, INTELLECT, IOB, IONEXCHANG, IRB, IRCON, ISEC, ISGEC, ITDC, ITDCEM, ITI, J&KBANK, JAGRAN, JAICORPLTD, JSWENERGY, JUBLFOOD, JUBLINGREA, JUBLPHARMA, JUSTDIAL, JYOTHYLAB, KAIT, KAJARIACER, KALPATPOWR, KALYANKJIL, KANSAINER, KAPSTON, KARURVYSYA, KEC, KEI, KIMS, KOTAKBANK, KPITTECH, KPRMILL, KRBL, KSB, LALPATHLAB, LATENTVIEW, LAURUSLABS, LAXMIMACH, LEMONTREE, LICHSGFIN, LICI, LINDEINDIA, LODHA, LUXIND, M&MFIN, MAHABANK, MAHLOG, MAHSCOOTER, MANAPPURAM, MARICO, MASFIN, MASTEK, MATRIMONY, MAXHEALTH, MAZDOCK, MEDPLUS, METROPOLIS, MGL, MINDAIND, MINDACORP, MOLDTKPAC, MOTILALOFS, MPF, MRF, MRPL, MSTC, MTARTECH, MUTHOOTFIN, NATCOPHARM, NATIONALUM, NAVINFLUOR, NAZARA, NCC, NEOGEN, NESCO, NETWORK18, NH, NILKAMAL, NLCINDIA, NMDC, NOCIL, NUVOCO, NYKAA, OBERREALTY, OFSS, OIL, OLECTRA, ORIENTELEC, PAGEIND, PATANJALI, PCBL, PEL, PERSISTENT, PETRONET, PFIZER, PHOENIXLTD, PIIND, PNBHOUSING, PNCINFRA, POLYCAB, POLYMED, POONAWALLA, POWERINDIA, PRAJIND, PRESTIGE, PRINCEPIPE, PRSMJOHNSN, PVRINOX, QUESS, RADICO, RAILTEL, RAIN, RAJESHEXPO, RALLIS, RAMCOCEM, RAMCOIND, RATNAMANI, RBLBANK, RECLTD, REDINGTON, RELAXO, RELIGARE, RESTAURANT, RITES, ROUTE, ROLEXRINGS, ROSSELLIND, RVNL, SAFARI, SAGCEM, SAIL, SANOFI, SAPPHIRE, SAREGAMA, SBICARD, SCHAEFFLER, SCI, SEQUENT, SFL, SHILPAMED, SHOOPERS, SHREECEM, SHRIRAMFIN, SHYAMMETL, SIEMENS, SIS, SJVN, SKFINDIA, SOBHA, SOLARINDS, SONACOMS, SOUTHBANK, SPARC, STARCEMENT, STARHEALTH, STLTECH, SUMICHEM, SUNDARMFIN, SUNDRMFAST, SUNTECK, SUPRAJIT, SUPREMEIND, SURYAROSNI, SUVENPHAR, SUZLON, SWANENERGY, SYMPHONY, SYNGENE, TATACHEM, TATACOMM, TATAELXSI, TATAINVEST, TATAMETALI, TATAPOWER, TATASTEEL, TATATECH, TCI, TCIEXP, TCNSBRANDS, TEJASNET, THERMAX, THOMASCOOK, TIMKEN, TITAGARH, TORNTPHARM, TORNTPOWER, TRENT, TRIDENT, TRITURBINE, TTKPRESTIG, TTML, TV18BRDCST, TVSMOTOR, UCOBANK, UJJIVANSFB, ULTRACEMCO, UNIONBANK, UNOMINDA, UTIAMC, VAKRANGEE, VALIANTORG, VBL, VEDL, VENKEYS, VESUVIUS, VGUARD, VINATIORG, VIPIND, VOLTAS, VRLLOG, VTL, WELCORP, WELENT, WELSPUNIND, WHIRLPOOL, WIPRO, WOCKPHARMA, YESBANK, ZEELEARN, ZEEL, ZENSARTECH, ZOMATO, ZYDUSLIFE, ZYDUSWELL"
+
+# --- LIVE NSE AUTO-UPDATER WITH PROPER ROUTING FIX ---
 @st.cache_data(ttl=86400) 
 def fetch_nse_list(index_name):
     urls = {
@@ -39,10 +48,16 @@ def fetch_nse_list(index_name):
             df = pd.read_csv(io.StringIO(response.text))
             return ", ".join(df['Symbol'].tolist())
         else:
-            raise Exception("Blocked")
+            raise Exception("Blocked by NSE")
     except Exception:
-        # Emergency backup tickers if connection is dropped
-        return "RELIANCE, TCS, INFY, HDFCBANK, ICICIBANK, TATAMOTORS, SBIN, BHARTIARTL"
+        # THE FIX: If blocked, correctly route to the massive fallback lists!
+        if index_name == "Nifty 50": return FALLBACK_NIFTY_50
+        if index_name == "Nifty 100": return FALLBACK_NIFTY_100
+        if index_name == "Nifty 200": return FALLBACK_NIFTY_200
+        if index_name == "Nifty 500": return FALLBACK_NIFTY_500
+        if index_name == "Nifty Next 50": return FALLBACK_NIFTY_100 # Safe approximation
+        if index_name == "Nifty Midcap 100": return FALLBACK_NIFTY_200 # Safe approximation
+        return "RELIANCE, TCS, INFY"
 
 st.sidebar.header("⚙️ Scanner Settings")
 
@@ -78,7 +93,6 @@ sleep_time = refresh_dict[refresh_choice]
 results = []
 skipped_count = 0
 
-# Add the baseline Nifty index to our batch query to compute real-time relative strength
 download_list = ticker_list.copy()
 if "^NSEI" not in download_list:
     download_list.append("^NSEI")
@@ -86,13 +100,12 @@ if "^NSEI" not in download_list:
 with st.spinner(f"Downloading {index_choice} live market matrix..."):
     data = yf.download(download_list, period="1y", group_by='ticker', threads=False, progress=False)
 
-# Compute benchmark performance for the baseline index
 try:
     nifty_df = data["^NSEI"].dropna()
     nifty_6m_old = nifty_df['Close'].iloc[-126] if len(nifty_df) >= 126 else nifty_df['Close'].iloc[0]
     nifty_benchmark_ret = (float(nifty_df['Close'].iloc[-1]) - float(nifty_6m_old)) / float(nifty_6m_old)
 except Exception:
-    nifty_benchmark_ret = 0.10 # Hard fallback reference if benchmark download encounters lag
+    nifty_benchmark_ret = 0.10 
 
 my_bar = st.progress(0, text=f"Analyzing setups using {app_mode.split(' ')[1]}...")
 total_stocks = len(ticker_list)
@@ -108,12 +121,10 @@ for i, t in enumerate(ticker_list):
             skipped_count += 1
             continue
         
-        # Mathematical Core Metrics
         df['50_SMA'] = df['Close'].rolling(window=50).mean()
         df['200_SMA'] = df['Close'].rolling(window=200).mean()
         df['20_Vol_SMA'] = df['Volume'].rolling(window=20).mean()
         
-        # Volatility Squeeze Math (Bollinger Band Compression Engine)
         df['BB_Mid'] = df['Close'].rolling(window=20).mean()
         df['BB_Std'] = df['Close'].rolling(window=20).std()
         df['BB_Width'] = (df['BB_Std'] * 4) / df['BB_Mid']
@@ -128,13 +139,11 @@ for i, t in enumerate(ticker_list):
         sma_200 = float(latest['200_SMA'])
         vol_sma = float(latest['20_Vol_SMA'])
         
-        # Vol Squeeze Logic evaluation
         current_bw = float(latest['BB_Width'])
         avg_bw = float(latest['BB_Width_SMA'])
         is_squeezing = current_bw < (avg_bw * 0.82)
         vol_status = "💥 SQUEEZE" if is_squeezing else "Normal"
         
-        # Relative Strength Matrix Math (6-Month Asset Performance vs Benchmark Index)
         stock_6m_old = df['Close'].iloc[-126] if len(df) >= 126 else df['Close'].iloc[0]
         stock_ret = (current_price - float(stock_6m_old)) / float(stock_6m_old)
         relative_strength_ratio = round((1 + stock_ret) / (1 + nifty_benchmark_ret), 2)
@@ -296,7 +305,6 @@ if results:
                     f'{", ".join(base_links) if base_links else "None right now"}'
                     '</div>', unsafe_allow_html=True)
 
-    # --- THE DAILY LOG EXPORTER ENGINE ---
     st.markdown("---")
     csv_data = df_results.to_csv(index=False).encode('utf-8')
     st.download_button(
