@@ -187,8 +187,10 @@ with tab_scanner:
             
             latest_news = None
             intraday_status = "---"
+            smart_vwap = "---"
             
             if "BUY" in signal:
+                # News Fetcher
                 try:
                     stock_info = yf.Ticker(t)
                     news_list = stock_info.news
@@ -199,9 +201,11 @@ with tab_scanner:
                 except Exception:
                     latest_news = "News unavailable"
                     
+                # Intraday Radar & VWAP Calculator
                 try:
                     intra_data = yf.download(t, period="5d", interval="15m", progress=False)
                     if not intra_data.empty:
+                        # 15m Trend Logic
                         intra_data['20_EMA'] = intra_data['Close'].ewm(span=20, adjust=False).mean()
                         last_close = float(intra_data['Close'].iloc[-1])
                         last_ema = float(intra_data['20_EMA'].iloc[-1])
@@ -210,13 +214,31 @@ with tab_scanner:
                             intraday_status = "🔥 ACTIVE"
                         else:
                             intraday_status = "💤 FADING"
+                            
+                        # Smart Money VWAP Logic (Calculated for current day)
+                        today_date = intra_data.index[-1].date()
+                        today_data = intra_data[intra_data.index.date == today_date].copy()
+                        
+                        if not today_data.empty:
+                            today_data['Typical_Price'] = (today_data['High'] + today_data['Low'] + today_data['Close']) / 3
+                            today_data['TP_V'] = today_data['Typical_Price'] * today_data['Volume']
+                            
+                            vol_sum = today_data['Volume'].sum()
+                            if vol_sum > 0:
+                                final_vwap = today_data['TP_V'].sum() / vol_sum
+                                if last_close >= final_vwap:
+                                    smart_vwap = "🟢 BUYING"
+                                else:
+                                    smart_vwap = "🔴 SELLING"
                 except Exception:
                     intraday_status = "Data Error"
+                    smart_vwap = "Data Error"
 
             row_data = {
                 "Ticker": t.replace(".NS", ""),
                 "Signal": signal,
                 "Live 15m Trend": intraday_status,
+                "Smart Money (VWAP)": smart_vwap,
                 "Price (₹)": tick(current_price),
                 "% from 52W High": round(pct_from_52w, 1),
                 "Volume": int(current_volume),
@@ -276,10 +298,16 @@ with tab_scanner:
             if val == "💤 FADING": return 'color: #e74c3c; font-weight: bold;'
             return ''
             
+        def color_vwap(val):
+            if "BUYING" in val: return 'color: #2ecc71; font-weight: bold;'
+            if "SELLING" in val: return 'color: #e74c3c; font-weight: bold;'
+            return ''
+            
         styled_df = df_results.style.map(color_signals, subset=['Signal'])\
                                     .map(color_highs, subset=['% from 52W High'])\
                                     .map(color_squeeze, subset=['Volatility Profile'])\
-                                    .map(color_intraday, subset=['Live 15m Trend'])
+                                    .map(color_intraday, subset=['Live 15m Trend'])\
+                                    .map(color_vwap, subset=['Smart Money (VWAP)'])
         
         st.dataframe(
             styled_df, 
@@ -349,6 +377,14 @@ with tab_tutorial:
         st.info("**📈 RVOL (Relative Volume)**\n\nVolume tells you the *truth* behind a price move. RVOL compares today's trading volume to the 20-day average. \n* **Formula:** `Current Volume / 20-Day Avg Volume`\n* **Logic:** If RVOL is 2.5x, it means institutions are buying 2.5 times heavier than normal. This confirms a true breakout.")
         
         st.warning("**💥 The SQUEEZE (Volatility Profile)**\n\nThe Squeeze uses Bollinger Bands to find stocks that have gone completely 'quiet'. \n* **Logic:** When a stock stops moving, the Bollinger Bands compress. The engine flags a stock when its bands are 18% tighter than their 100-day average. This indicates silent institutional accumulation right before an explosive expansion phase.")
+        
+        st.markdown('<div style="padding:15px; border-radius:5px; background-color:#f9f5ff; border-left:5px solid #8e44ad;">'
+                    '<strong>🏦 Smart Money (VWAP)</strong><br><br>'
+                    'VWAP (Volume Weighted Average Price) is the holy grail of institutional trading.<br>'
+                    '<ul><li><strong>🟢 BUYING:</strong> Current price is ABOVE today\'s VWAP. Large funds are actively paying premium prices to accumulate the stock today.</li>'
+                    '<li><strong>🔴 SELLING:</strong> Current price is BELOW today\'s VWAP. Funds are using the breakout volume to quietly offload their shares. Be careful!</li></ul>'
+                    '</div>', unsafe_allow_html=True)
+
     with col2:
         st.success("**📊 Market RS (Relative Strength)**\n\nYou only want to buy the strongest stocks in the market. \n* **Formula:** `Stock 6-Month Return / Nifty 50 6-Month Return`\n* **Logic:** A score of `1.00x` means it matches the Nifty. A score of `1.30x` means it is vastly outperforming the index. Always focus on stocks with RS > 1.00.")
         
