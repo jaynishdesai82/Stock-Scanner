@@ -50,3 +50,107 @@ if st.button("🔄 Refresh Market Data") or 'initialized' not in st.session_stat
                 df = data.dropna()
             else:
                 df = data[t].dropna()
+                
+            if df.empty or len(df) < 200:
+                continue
+            
+            # Base Calcs
+            df['50_SMA'] = df['Close'].rolling(window=50).mean()
+            df['200_SMA'] = df['Close'].rolling(window=200).mean()
+            df['20_Vol_SMA'] = df['Volume'].rolling(window=20).mean()
+            
+            latest = df.iloc[-1]
+            prev_close = df.iloc[-2]['Close']
+            
+            current_price = float(latest['Close'])
+            current_volume = float(latest['Volume'])
+            sma_50 = float(latest['50_SMA'])
+            sma_200 = float(latest['200_SMA'])
+            vol_sma = float(latest['20_Vol_SMA'])
+            
+            trend_ok = (current_price > sma_50) and (sma_50 > sma_200)
+            volume_ok = current_volume > (vol_sma * volume_multiplier)
+            price_ok = current_price > float(prev_close)
+            
+            sl_price = current_price * (1 - (risk_pct / 100))
+            target_3r = current_price * (1 + (risk_pct * 3 / 100))
+            
+            # PRO MODE
+            if "Pro Version" in app_mode:
+                delta = df['Close'].diff()
+                up = delta.clip(lower=0)
+                down = -1 * delta.clip(upper=0)
+                rs = up.ewm(com=13, adjust=False).mean() / down.ewm(com=13, adjust=False).mean()
+                rsi = float(100 - (100 / (1 + rs)).iloc[-1])
+                
+                exp1 = df['Close'].ewm(span=12, adjust=False).mean()
+                exp2 = df['Close'].ewm(span=26, adjust=False).mean()
+                macd = float((exp1 - exp2).iloc[-1])
+                signal_line = float((exp1 - exp2).ewm(span=9, adjust=False).mean().iloc[-1])
+                
+                rsi_bullish = 60 <= rsi <= 75
+                macd_bullish = macd > signal_line
+                close_to_sma = current_price <= (sma_50 * 1.08) 
+                
+                if trend_ok and volume_ok and price_ok and rsi_bullish and macd_bullish and close_to_sma:
+                    signal = "🔥 SNIPER BUY"
+                elif trend_ok and volume_ok and price_ok:
+                    signal = "🚀 BASE BUY"
+                elif current_price < sma_50:
+                    signal = "🛑 CASH/SELL"
+                else:
+                    signal = "⏳ HOLD"
+                    
+                results.append({
+                    "Ticker": t.replace(".NS", ""),
+                    "Signal": signal,
+                    "Price (₹)": round(current_price, 2),
+                    "RSI": round(rsi, 1),
+                    "MACD": "UP 📈" if macd_bullish else "DOWN 📉",
+                    "Vol Mult": round(current_volume / vol_sma, 2),
+                    "50 SMA (₹)": round(sma_50, 2),
+                    "Stop Loss": round(sl_price, 2),
+                    "Target": round(target_3r, 2)
+                })
+                
+            # BASIC MODE
+            else:
+                if trend_ok and volume_ok and price_ok:
+                    signal = "🚀 BUY SETUP"
+                elif current_price < sma_50:
+                    signal = "🛑 CASH/SELL"
+                else:
+                    signal = "⏳ HOLD"
+                    
+                results.append({
+                    "Ticker": t.replace(".NS", ""),
+                    "Signal": signal,
+                    "Price (₹)": round(current_price, 2),
+                    "Vol Mult": round(current_volume / vol_sma, 2),
+                    "50 SMA (₹)": round(sma_50, 2),
+                    "200 SMA (₹)": round(sma_200, 2),
+                    "Stop Loss": round(sl_price, 2),
+                    "Target": round(target_3r, 2)
+                })
+
+        except Exception as e:
+            continue
+            
+        my_bar.progress((i + 1) / total_stocks, text=f"Analyzing {t.replace('.NS', '')} ({i+1}/{total_stocks})")
+        
+    my_bar.empty() 
+                
+    # 3. DISPLAY TABLE
+    if results:
+        df_results = pd.DataFrame(results)
+        
+        def color_signals(val):
+            if "SNIPER BUY" in val: return 'background-color: #8e44ad; color: white; font-weight: bold;'
+            if "BUY" in val: return 'background-color: #2ecc71; color: white; font-weight: bold;'
+            if "CASH" in val: return 'background-color: #e74c3c; color: white;'
+            return 'background-color: #f1c40f; color: black;'
+            
+        styled_df = df_results.style.map(color_signals, subset=['Signal'])
+        st.dataframe(styled_df, use_container_width=True, height=600)
+    else:
+        st.error("Could not fetch data. The market might be closed or API is temporarily down.")
