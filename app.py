@@ -34,9 +34,9 @@ if st.button("🔄 Refresh Market Data") or 'initialized' not in st.session_stat
     
     results = []
     
-    # 1. BATCH DOWNLOAD (Anti-Blocker Engine)
+    # 1. BATCH DOWNLOAD (Anti-Blocker Engine with threads disabled for Cloud)
     with st.spinner("Downloading entire Nifty 200 data at once... (Bypassing blocks)"):
-        data = yf.download(ticker_list, period="1y", group_by='ticker', threads=True, show_errors=False)
+        data = yf.download(ticker_list, period="1y", group_by='ticker', threads=False, progress=False)
         
     progress_text = f"Analyzing setups using {app_mode.split(' ')[1]}..."
     my_bar = st.progress(0, text=progress_text)
