@@ -24,7 +24,6 @@ FALLBACK_NIFTY_200 = FALLBACK_NIFTY_100 + ", ABCAPITAL, ABFRL, ACC, ALKEM, APARI
 
 FALLBACK_NIFTY_500 = FALLBACK_NIFTY_200 + ", 360ONE, 3MINDIA, AARTIDRUGS, AARTIIND, AAVAS, ABBOTINDIA, ADVENZYMES, AEGISCHEM, AFFLE, AJANTPHARM, AKZOINDIA, ALEMBICLTD, ALOKINDS, AMARAJABAT, AMBER, ANGELONE, ANURAS, APARINDS, APTUS, APLAPOLLO, ASANIFIN, ASTERDM, ASTRAZEN, ATUL, AVANTIFEED, BATAINDIA, BEML, BLUEDART, BLUESTARCO, BOMDYEING, BRIGADE, BSOFT, CAMPUS, CASTROLIND, CCL, CERA, CGCL, CHALET, CHAMBLFERT, CHEMPLASTS, CHENNPETRO, CAMS, CLEAN, COCHINSHIP, CRAFTSMAN, CREDITACC, CRISIL, CROMPTON, CSBBANK, CUB, CYIENT, DATAPATTNS, DEEPAKFERT, DELTACORP, DEVYANI, EIDPARRY, EIHOTEL, ENDURANCE, ENGINERSIN, EQUITASBNK, ERIS, ESCORTS, ETHER, EXIDEIND, FDC, FINCABLES, FINPIPE, FSL, GABRIEL, GARFIBRES, GEOMETRIC, GLAND, GLENMARK, GMDCLTD, GMMPFAUDLR, GODFRYPHLP, GODREJIND, GRANULES, GRAPHITE, GRINDWELL, GUJALKALI, GUJGASLTD, GNFC, GSFC, HAPPSTMNDS, HATHWAY, HEG, HFCL, HGS, HIKAL, HINDCOPPER, HINDUJAVEN, HINDZINC, HONAUT, HSCL, HUDCO, IBULHSGFIN, ICIL, IDFC, IFBIND, IGL, IIFL, INDIAMART, INDIANB, INDIGOPNTS, INDUSINDBK, INFY, INOXLEISUR, INTELLECT, IOB, IONEXCHANG, IRB, IRCON, ISEC, ISGEC, ITDC, ITDCEM, ITI, J&KBANK, JAGRAN, JAICORPLTD, JSWENERGY, JUBLFOOD, JUBLINGREA, JUBLPHARMA, JUSTDIAL, JYOTHYLAB, KAIT, KAJARIACER, KALPATPOWR, KALYANKJIL, KANSAINER, KAPSTON, KARURVYSYA, KEC, KEI, KIMS, KOTAKBANK, KPITTECH, KPRMILL, KRBL, KSB, LALPATHLAB, LATENTVIEW, LAURUSLABS, LAXMIMACH, LEMONTREE, LICHSGFIN, LICI, LINDEINDIA, LODHA, LUXIND, M&MFIN, MAHABANK, MAHLOG, MAHSCOOTER, MANAPPURAM, MARICO, MASFIN, MASTEK, MATRIMONY, MAXHEALTH, MAZDOCK, MEDPLUS, METROPOLIS, MGL, MINDAIND, MINDACORP, MOLDTKPAC, MOTILALOFS, MPF, MRF, MRPL, MSTC, MTARTECH, MUTHOOTFIN, NATCOPHARM, NATIONALUM, NAVINFLUOR, NAZARA, NCC, NEOGEN, NESCO, NETWORK18, NH, NILKAMAL, NLCINDIA, NMDC, NOCIL, NUVOCO, NYKAA, OBERREALTY, OFSS, OIL, OLECTRA, ORIENTELEC, PAGEIND, PATANJALI, PCBL, PEL, PERSISTENT, PETRONET, PFIZER, PHOENIXLTD, PIIND, PNBHOUSING, PNCINFRA, POLYCAB, POLYMED, POONAWALLA, POWERINDIA, PRAJIND, PRESTIGE, PRINCEPIPE, PRSMJOHNSN, PVRINOX, QUESS, RADICO, RAILTEL, RAIN, RAJESHEXPO, RALLIS, RAMCOCEM, RAMCOIND, RATNAMANI, RBLBANK, RECLTD, REDINGTON, RELAXO, RELIGARE, RESTAURANT, RITES, ROUTE, ROLEXRINGS, ROSSELLIND, RVNL, SAFARI, SAGCEM, SAIL, SANOFI, SAPPHIRE, SAREGAMA, SBICARD, SCHAEFFLER, SCI, SEQUENT, SFL, SHILPAMED, SHOOPERS, SHREECEM, SHRIRAMFIN, SHYAMMETL, SIEMENS, SIS, SJVN, SKFINDIA, SOBHA, SOLARINDS, SONACOMS, SOUTHBANK, SPARC, STARCEMENT, STARHEALTH, STLTECH, SUMICHEM, SUNDARMFIN, SUNDRMFAST, SUNTECK, SUPRAJIT, SUPREMEIND, SURYAROSNI, SUVENPHAR, SUZLON, SWANENERGY, SYMPHONY, SYNGENE, TATACHEM, TATACOMM, TATAELXSI, TATAINVEST, TATAMETALI, TATAPOWER, TATASTEEL, TATATECH, TCI, TCIEXP, TCNSBRANDS, TEJASNET, THERMAX, THOMASCOOK, TIMKEN, TITAGARH, TORNTPHARM, TORNTPOWER, TRENT, TRIDENT, TRITURBINE, TTKPRESTIG, TTML, TV18BRDCST, TVSMOTOR, UCOBANK, UJJIVANSFB, ULTRACEMCO, UNIONBANK, UNOMINDA, UTIAMC, VAKRANGEE, VALIANTORG, VBL, VEDL, VENKEYS, VESUVIUS, VGUARD, VINATIORG, VIPIND, VOLTAS, VRLLOG, VTL, WELCORP, WELENT, WELSPUNIND, WHIRLPOOL, WIPRO, WOCKPHARMA, YESBANK, ZEELEARN, ZEEL, ZENSARTECH, ZOMATO, ZYDUSLIFE, ZYDUSWELL"
 
-# --- LIVE NSE AUTO-UPDATER WITH PROPER ROUTING FIX ---
 @st.cache_data(ttl=86400) 
 def fetch_nse_list(index_name):
     urls = {
@@ -50,13 +49,12 @@ def fetch_nse_list(index_name):
         else:
             raise Exception("Blocked by NSE")
     except Exception:
-        # THE FIX: If blocked, correctly route to the massive fallback lists!
         if index_name == "Nifty 50": return FALLBACK_NIFTY_50
         if index_name == "Nifty 100": return FALLBACK_NIFTY_100
         if index_name == "Nifty 200": return FALLBACK_NIFTY_200
         if index_name == "Nifty 500": return FALLBACK_NIFTY_500
-        if index_name == "Nifty Next 50": return FALLBACK_NIFTY_100 # Safe approximation
-        if index_name == "Nifty Midcap 100": return FALLBACK_NIFTY_200 # Safe approximation
+        if index_name == "Nifty Next 50": return FALLBACK_NIFTY_100 
+        if index_name == "Nifty Midcap 100": return FALLBACK_NIFTY_200 
         return "RELIANCE, TCS, INFY"
 
 st.sidebar.header("⚙️ Scanner Settings")
@@ -192,8 +190,12 @@ for i, t in enumerate(ticker_list):
         
         show_levels = "SELL" not in signal
         
+        # --- PHASE 3: SMART FETCH ENGINE (News & MTF Intraday Radar) ---
         latest_news = None
+        intraday_status = "---"
+        
         if "BUY" in signal:
+            # 1. Fetch News
             try:
                 stock_info = yf.Ticker(t)
                 news_list = stock_info.news
@@ -203,10 +205,27 @@ for i, t in enumerate(ticker_list):
                     latest_news = f"[{title[:40]}...]({link})" 
             except Exception:
                 latest_news = "News unavailable"
+                
+            # 2. Fetch MTF Intraday Radar (15-Minute Chart)
+            try:
+                intra_data = yf.download(t, period="5d", interval="15m", progress=False)
+                if not intra_data.empty:
+                    # Calculate Intraday 20 EMA
+                    intra_data['20_EMA'] = intra_data['Close'].ewm(span=20, adjust=False).mean()
+                    last_close = float(intra_data['Close'].iloc[-1])
+                    last_ema = float(intra_data['20_EMA'].iloc[-1])
+                    
+                    if last_close > last_ema:
+                        intraday_status = "🔥 ACTIVE"
+                    else:
+                        intraday_status = "💤 FADING"
+            except Exception:
+                intraday_status = "Data Error"
 
         row_data = {
             "Ticker": t.replace(".NS", ""),
             "Signal": signal,
+            "Live 15m Trend": intraday_status,
             "Price (₹)": tick(current_price),
             "% from 52W High": round(pct_from_52w, 1),
             "Volume": int(current_volume),
@@ -261,9 +280,15 @@ if results:
         if "SQUEEZE" in val: return 'color: #bc5a00; font-weight: bold; background-color: #fff3cd;'
         return ''
         
+    def color_intraday(val):
+        if val == "🔥 ACTIVE": return 'color: #2ecc71; font-weight: bold;'
+        if val == "💤 FADING": return 'color: #e74c3c; font-weight: bold;'
+        return ''
+        
     styled_df = df_results.style.map(color_signals, subset=['Signal'])\
                                 .map(color_highs, subset=['% from 52W High'])\
-                                .map(color_squeeze, subset=['Volatility Profile'])
+                                .map(color_squeeze, subset=['Volatility Profile'])\
+                                .map(color_intraday, subset=['Live 15m Trend'])
     
     st.dataframe(
         styled_df, 
