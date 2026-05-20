@@ -26,7 +26,7 @@ FALLBACK_NIFTY_100 = FALLBACK_NIFTY_50 + ", ABB, AMBUJACEM, ATGL, AWL, BAJAJHLDN
 FALLBACK_NIFTY_200 = FALLBACK_NIFTY_100 + ", ABCAPITAL, ABFRL, ACC, ALKEM, APARINDS, ASHOKLEY, ASTRAL, AUBANK, AUROPHARMA, BALKRISIND, BANDHANBNK, BANKINDIA, BATAINDIA, BDL, BERGEPAINT, BIOCON, BSE, CDSL, CENTURYTEX, CUB, CONCOR, COROMANDEL, CROMPTON, CUMMINSIND, CYIENT, DALBHARAT, DEEPAKNITR, DELHIVERY, DEVYANI, ESCORTS, EXIDEIND, FACT, FEDERALBNK, FORTIS, GLAND, GLENMARK, GMRINFRA, GUJGASLTD, HINDCOPPER, HINDPETRO, IDBI, IDFCFIRSTB, INDIANB, IPCALAB, IRCTC, JINDALSTEL, JSWENERGY, JUBLFOOD, KALYANKJIL, KANSAINER, KPITTECH, L&TFH, LAURUSLABS, LICHSGFIN, LICI, LODHA, MAHABANK, MANAPPURAM, MAZDOCK, MAXHEALTH, METROPOLIS, MOTILALOFS, MOTHERSON, MPHASIS, MRF, NATCOPHARM, NATIONALUM, NAVINFLUOR, NLCINDIA, NMDC, NYKAA, OBERREALTY, OFSS, OIL, PAGEIND, PATANJALI, PEL, PERSISTENT, PETRONET, PNB, POLYCAB, POONAWALLA, PRESTIGE, RADICO, RBLBANK, SAIL, SBICARD, SJVN, SKFINDIA, SOBHA, SOLARINDS, SONACOMS, SUNTV, SUPREMEIND, SUZLON, SYNGENE, TATACHEM, TATACOMM, TATAELXSI, TATAPOWER, TATATECH, TIINDIA, TORNTPOWER, TRIDENT, UCOBANK, UNIONBANK, VBL, VOLTAS, YESBANK"
 
 # --- LIVE NSE AUTO-UPDATER ---
-@st.cache_data(ttl=86400) # Caches data for 24 hours to prevent being blocked by NSE
+@st.cache_data(ttl=86400) 
 def fetch_nse_list(index_name):
     urls = {
         "Nifty 50": "https://www.niftyindices.com/IndexConstituent/ind_nifty50list.csv",
@@ -42,7 +42,6 @@ def fetch_nse_list(index_name):
         df = pd.read_csv(io.StringIO(response.text))
         return ", ".join(df['Symbol'].tolist())
     except Exception:
-        # If NSE servers are down, fall back to the backup lists instantly
         if index_name == "Nifty 50": return FALLBACK_NIFTY_50
         if index_name == "Nifty 100": return FALLBACK_NIFTY_100
         if index_name == "Nifty 200": return FALLBACK_NIFTY_200
@@ -62,7 +61,6 @@ index_choice = st.sidebar.selectbox(
     ["Nifty 50", "Nifty 100", "Nifty 200", "Custom List"]
 )
 
-# Fetching the live list from NSE (or fallback)
 if index_choice == "Custom List":
     default_text = "RELIANCE, TCS, INFY" 
 else:
@@ -95,6 +93,7 @@ ticker_list = [f"{s.strip().upper()}.NS" for s in user_stocks.split(",") if s.st
 
 # --- DASHBOARD ENGINE ---
 results = []
+skipped_count = 0
 
 with st.spinner(f"Downloading {index_choice} live data..."):
     data = yf.download(ticker_list, period="1y", group_by='ticker', threads=False, progress=False)
@@ -112,7 +111,9 @@ for i, t in enumerate(ticker_list):
         else:
             df = data[t].dropna()
             
+        # The safety rule: Skip stocks without 200 days of history
         if df.empty or len(df) < 200:
+            skipped_count += 1
             continue
         
         # Base Calcs
@@ -201,6 +202,7 @@ for i, t in enumerate(ticker_list):
             })
 
     except Exception as e:
+        skipped_count += 1
         continue
         
     my_bar.progress((i + 1) / total_stocks, text=f"Analyzing {t.replace('.NS', '')} ({i+1}/{total_stocks})")
@@ -211,6 +213,9 @@ my_bar.empty()
 if results:
     df_results = pd.DataFrame(results)
     
+    # --- THIS FIXES THE ZERO INDEX ISSUE ---
+    df_results.index = df_results.index + 1 
+    
     def color_signals(val):
         if "SNIPER BUY" in val: return 'background-color: #8e44ad; color: white; font-weight: bold;'
         if "BUY" in val: return 'background-color: #2ecc71; color: white; font-weight: bold;'
@@ -219,6 +224,10 @@ if results:
         
     styled_df = df_results.style.map(color_signals, subset=['Signal'])
     st.dataframe(styled_df, use_container_width=True, height=500)
+    
+    # Let the user know if any stocks were safely skipped
+    if skipped_count > 0:
+        st.caption(f"*(Note: {skipped_count} stocks were excluded from this scan because they are recent listings and do not have enough history to calculate a 200-Day Moving Average).*")
     
     st.markdown("---")
     st.subheader("📋 Quick Action Summary")
