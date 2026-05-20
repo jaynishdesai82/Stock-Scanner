@@ -4,13 +4,19 @@ import pandas as pd
 import time
 import requests
 import io
+import os
 import warnings
 warnings.filterwarnings('ignore')
 
 st.set_page_config(page_title="Jaynish Multi-Scanner", layout="wide", page_icon="🏆")
 
-st.title("🏆 Jaynish Multi-Scanner")
-st.write("Real-time automated dashboard tracking institutional momentum setups.")
+st.title("🏆 Jaynish Trading Terminal")
+st.write("Quantitative momentum engine and real-time paper execution ledger.")
+
+# --- SILENT AUTO-BACKUP DIRECTORY SETUP ---
+BACKUP_DIR = "Auto_Backups"
+if not os.path.exists(BACKUP_DIR):
+    os.makedirs(BACKUP_DIR)
 
 # --- INITIALIZE PORTFOLIO DATABASE ---
 if 'portfolio' not in st.session_state:
@@ -59,13 +65,13 @@ def fetch_nse_list(index_name):
         return "RELIANCE, TCS, INFY"
 
 # --- UI NAVIGATION CONFIGURATION ---
-tab_scanner, tab_portfolio, tab_tutorial = st.tabs(["🎯 Live Market Scanner", "💼 My Trade Portfolio", "📖 Strategy & Logic Guide"])
+tab_scanner, tab_portfolio, tab_tutorial = st.tabs(["🎯 Live Market Scanner", "💼 Active Ledger", "📖 Logic Guide"])
 
 # --- SIDEBAR GLOBAL SYSTEM FILTERS ---
 st.sidebar.header("⚙️ Scanner Settings")
-app_mode = st.sidebar.radio("Select Scanner Mode:", ["📊 Basic Version (Trend & Volume)", "🔥 Pro Version (Sniper Metrics)"])
+app_mode = st.sidebar.radio("Scanner Engine:", ["📊 Base Version", "🔥 Pro Version (Sniper)"])
 st.sidebar.markdown("---")
-index_choice = st.sidebar.selectbox("Select Market Index:", ["Nifty 50", "Nifty Next 50", "Nifty 100", "Nifty Midcap 100", "Nifty 200", "Nifty 500", "Custom List"])
+index_choice = st.sidebar.selectbox("Market Index:", ["Nifty 50", "Nifty Next 50", "Nifty 100", "Nifty Midcap 100", "Nifty 200", "Nifty 500", "Custom List"])
 
 if index_choice == "Custom List":
     user_stocks = st.sidebar.text_area("Watchlist (Separate with commas):", "RELIANCE, TCS, INFY", height=150)
@@ -75,17 +81,17 @@ else:
     ticker_list = [f"{s.strip().upper()}.NS" for s in raw_stocks.split(",") if s.strip()]
 
 st.sidebar.markdown("---")
-volume_multiplier = st.sidebar.slider("RVOL Breakout Multiplier", 1.5, 3.0, 2.0, 0.1)
-risk_pct = st.sidebar.slider("Stop Loss Risk %", 3.0, 8.0, 5.0, 0.5)
+volume_multiplier = st.sidebar.slider("RVOL Threshold", 1.5, 3.0, 2.0, 0.1)
+risk_pct = st.sidebar.slider("Stop Loss %", 3.0, 8.0, 5.0, 0.5)
 
 st.sidebar.markdown("---")
 st.sidebar.subheader("🔄 Auto-Pilot")
-refresh_choice = st.sidebar.selectbox("Auto-Refresh Interval:", ["Off", "1 Minute", "2 Minutes", "5 Minutes", "10 Minutes"])
+refresh_choice = st.sidebar.selectbox("Refresh Interval:", ["Off", "1 Minute", "2 Minutes", "5 Minutes", "10 Minutes"])
 refresh_dict = {"Off": 0, "1 Minute": 60, "2 Minutes": 120, "5 Minutes": 300, "10 Minutes": 600}
 sleep_time = refresh_dict[refresh_choice]
 
 # =====================================================================
-# TAB 1: THE SCANNER ENGINE
+# TAB 1: THE SCANNER ENGINE & EXECUTION DECK
 # =====================================================================
 with tab_scanner:
     results = []
@@ -94,7 +100,7 @@ with tab_scanner:
     if "^NSEI" not in download_list:
         download_list.append("^NSEI")
 
-    with st.spinner(f"Downloading {index_choice} live market matrix..."):
+    with st.spinner(f"Synchronizing {index_choice} pricing matrix..."):
         data = yf.download(download_list, period="1y", group_by='ticker', threads=False, progress=False)
 
     try:
@@ -104,7 +110,7 @@ with tab_scanner:
     except Exception:
         nifty_benchmark_ret = 0.10 
 
-    my_bar = st.progress(0, text=f"Analyzing setups using {app_mode.split(' ')[1]}...")
+    my_bar = st.progress(0, text=f"Analyzing technical setups...")
     total_stocks = len(ticker_list)
 
     for i, t in enumerate(ticker_list):
@@ -271,7 +277,14 @@ with tab_scanner:
                 
     if results:
         df_results = pd.DataFrame(results)
-        df_results.index = df_results.index + 1 
+        
+        # --- SILENT AUTO-BACKUP EXECUTION ---
+        try:
+            timestamp = time.strftime('%Y%m%d_%H%M%S')
+            backup_path = os.path.join(BACKUP_DIR, f"Scan_Log_{timestamp}.csv")
+            df_results.to_csv(backup_path, index=False)
+        except Exception as e:
+            pass # Fails silently so it never interrupts the app
         
         def color_signals(val):
             if "SNIPER BUY" in val: return 'background-color: #8e44ad; color: white; font-weight: bold;'
@@ -308,10 +321,12 @@ with tab_scanner:
                                     .map(color_intraday, subset=['Live 15m Trend'])\
                                     .map(color_vwap, subset=['Smart Money (VWAP)'])
         
+        # Cleaner UI: hide_index=True removes the messy numbers on the left
         st.dataframe(
             styled_df, 
             use_container_width=True, 
             height=500,
+            hide_index=True,
             column_config={
                 "Latest Catalyst": st.column_config.LinkColumn("Latest Catalyst"),
                 "% from 52W High": st.column_config.NumberColumn("% from 52W High", format="%.1f%%"),
@@ -327,8 +342,43 @@ with tab_scanner:
         if skipped_count > 0:
             st.caption(f"*(Note: {skipped_count} stocks were automatically excluded from this scan due to lack of historical data).*")
         
+        # --- NEW: INLINE TRADE EXECUTION DECK ---
         st.markdown("---")
-        st.subheader("📋 Quick Action Summary")
+        st.subheader("⚡ 1-Click Paper Execution Deck")
+        
+        # Filter only stocks that generated a buy signal
+        buy_signals_df = df_results[df_results['Signal'].str.contains("BUY", na=False)]
+        
+        if not buy_signals_df.empty:
+            buy_tickers = buy_signals_df['Ticker'].tolist()
+            
+            with st.container():
+                col_tk, col_qty, col_btn = st.columns([2, 1, 1])
+                with col_tk:
+                    selected_trade = st.selectbox("Select Breakout Ticker:", buy_tickers)
+                with col_qty:
+                    trade_qty = st.number_input("Shares to Buy:", min_value=1, value=100, step=10)
+                with col_btn:
+                    st.write("") # Spacing
+                    st.write("") # Spacing
+                    if st.button("📈 Execute Paper Trade", use_container_width=True, type="primary"):
+                        # Auto-fetch the exact data from the scanner table
+                        trade_data = buy_signals_df[buy_signals_df['Ticker'] == selected_trade].iloc[0]
+                        new_row = pd.DataFrame([{
+                            'Ticker': selected_trade, 
+                            'Type': trade_data['Signal'], 
+                            'Entry Price': float(trade_data['Price (₹)']),
+                            'Quantity': trade_qty, 
+                            'Stop Loss': float(trade_data['Stop Loss (₹)']) if pd.notna(trade_data['Stop Loss (₹)']) else 0.0, 
+                            'Target': float(trade_data['Target (₹)']) if pd.notna(trade_data['Target (₹)']) else 0.0
+                        }])
+                        st.session_state['portfolio'] = pd.concat([st.session_state['portfolio'], new_row], ignore_index=True)
+                        st.success(f"Successfully executed {trade_qty} shares of {selected_trade}. Check Tab 2!")
+        else:
+            st.info("No active buy signals right now. The Execution Deck is resting.")
+
+        st.markdown("---")
+        st.subheader("📋 Quick Action Matrix")
         
         sniper_raw = df_results[df_results['Signal'] == "🔥 SNIPER BUY"]['Ticker'].tolist()
         base_raw = df_results[df_results['Signal'].isin(["🚀 BASE BUY", "🚀 BUY SETUP"])]['Ticker'].tolist()
@@ -351,7 +401,7 @@ with tab_scanner:
         st.markdown("---")
         csv_data = df_results.to_csv(index=False).encode('utf-8')
         st.download_button(
-            label="📥 Export Current Scan to CSV (Excel Log)",
+            label="📥 Manual Export (Log also saved automatically in background)",
             data=csv_data,
             file_name=f"Jaynish_Scanner_Log_{time.strftime('%Y%m%d_%H%M%S')}.csv",
             mime="text/csv",
@@ -367,11 +417,11 @@ with tab_portfolio:
     st.header("💼 My Institutional Trade Ledger")
     st.write("Track position scaling and floating net value metrics dynamically across active trade cycles.")
     
-    # 1. TRANSACTION LOGGING INTERFACE
-    with st.expander("➕ Log New Active Position / Trade Ticket", expanded=False):
+    # MANUAL TICKET OVERRIDE
+    with st.expander("⚙️ Manual Ticket Override (Log Custom Trade)", expanded=False):
         form_col1, form_col2, form_col3 = st.columns(3)
         with form_col1:
-            add_tk = st.text_input("Stock Symbol (e.g., RELIANCE, TCS):").strip().upper()
+            add_tk = st.text_input("Stock Symbol (e.g., RELIANCE):").strip().upper()
             add_type = st.selectbox("Setup Execution Mode:", ["🔥 SNIPER", "🚀 BASE", "⏳ STRATEGIC HOLD"])
         with form_col2:
             add_price = st.number_input("Average Buy Entry Price (₹):", min_value=0.0, step=0.05)
@@ -380,24 +430,23 @@ with tab_portfolio:
             add_sl = st.number_input("Assigned Stop Loss Level (₹):", min_value=0.0, step=0.05)
             add_tgt = st.number_input("Assigned Profit Target Level (₹):", min_value=0.0, step=0.05)
             
-        if st.button("💾 Lock Position Into Database", use_container_width=True):
+        if st.button("💾 Lock Manual Position Into Database", use_container_width=True):
             if add_tk:
                 new_row = pd.DataFrame([{
                     'Ticker': add_tk, 'Type': add_type, 'Entry Price': add_price,
                     'Quantity': add_qty, 'Stop Loss': add_sl, 'Target': add_tgt
                 }])
                 st.session_state['portfolio'] = pd.concat([st.session_state['portfolio'], new_row], ignore_index=True)
-                st.success(f"Position for {add_tk} successfully committed to ledger memory.")
+                st.success(f"Manual Position for {add_tk} successfully committed to ledger memory.")
                 st.rerun()
             else:
                 st.error("Symbol input validation failed. Please provide a ticker.")
 
-    # 2. RUN REAL-TIME LEDGER VALUATION CALCULATIONS
+    # LIVE LEDGER VALUATION
     if not st.session_state['portfolio'].empty:
         portfolio_df = st.session_state['portfolio'].copy()
         unique_tickers = [f"{tk}.NS" for tk in portfolio_df['Ticker'].unique()]
         
-        # High-Speed Optimized Price Extraction Loop
         with st.spinner("Synchronizing real-time floating ledger valuations..."):
             live_data = yf.download(unique_tickers, period="1d", progress=False)
             
@@ -411,14 +460,12 @@ with tab_portfolio:
             except Exception:
                 live_prices[tk] = None
 
-        # Build Financial Valuation Framework
         portfolio_df['Live Price (₹)'] = portfolio_df['Ticker'].map(live_prices)
         portfolio_df['Total Investment'] = portfolio_df['Entry Price'] * portfolio_df['Quantity']
         portfolio_df['Current Value'] = portfolio_df['Live Price (₹)'].fillna(portfolio_df['Entry Price']) * portfolio_df['Quantity']
         portfolio_df['Net P&L (₹)'] = portfolio_df['Current Value'] - portfolio_df['Total Investment']
         portfolio_df['Total Return %'] = (portfolio_df['Net P&L (₹)'] / portfolio_df['Total Investment']) * 100
 
-        # Calculate Global Portfolio Topline Cards
         total_capital = portfolio_df['Total Investment'].sum()
         current_equity = portfolio_df['Current Value'].sum()
         portfolio_pnl_rs = current_equity - total_capital
@@ -428,16 +475,14 @@ with tab_portfolio:
         card_col1.metric("Deployed Capital", f"₹{total_capital:,.2f}")
         card_col2.metric("Net Liquid Equity", f"₹{current_equity:,.2f}")
         
-        # Style metrics green for positive performance, red for negative performance
         if portfolio_pnl_rs >= 0:
-            card_col3.metric("Floating Floating Net P&L", f"₹{portfolio_pnl_rs:,.2f}", f"+{portfolio_pnl_pct:.2f}%")
+            card_col3.metric("Floating Net P&L", f"₹{portfolio_pnl_rs:,.2f}", f"+{portfolio_pnl_pct:.2f}%")
         else:
-            card_col3.metric("Floating Floating Net P&L", f"₹{portfolio_pnl_rs:,.2f}", f"{portfolio_pnl_pct:.2f}%", delta_color="inverse")
+            card_col3.metric("Floating Net P&L", f"₹{portfolio_pnl_rs:,.2f}", f"{portfolio_pnl_pct:.2f}%", delta_color="inverse")
 
         st.markdown("---")
-        st.subheader("📊 Deployed Asset Positions Breakdown")
+        st.subheader("📊 Deployed Asset Positions")
 
-        # Visual Grid Styling Configuration
         def style_portfolio(row):
             pnl = row['Net P&L (₹)']
             color = 'background-color: #eef9f1; color: #2ecc71; font-weight: bold;' if pnl >= 0 else 'background-color: #fdf2f2; color: #e74c3c;'
@@ -449,30 +494,29 @@ with tab_portfolio:
         st.dataframe(
             styled_port,
             use_container_width=True,
+            hide_index=True,
             column_config={
-                "Entry Price": st.column_config.NumberColumn("Entry Price", format="%%.2f"),
+                "Entry Price": st.column_config.NumberColumn("Entry Price", format="₹%.2f"),
                 "Live Price (₹)": st.column_config.NumberColumn("Live Price (₹)", format="₹%.2f"),
                 "Total Investment": st.column_config.NumberColumn("Total Deployed", format="₹%d"),
                 "Current Value": st.column_config.NumberColumn("Current Value", format="₹%d"),
                 "Net P&L (₹)": st.column_config.NumberColumn("Net P&L (₹)", format="₹%.2f"),
                 "Total Return %": st.column_config.NumberColumn("Total Return %", format="%.2f%%"),
-                "Stop Loss": st.column_config.NumberColumn("Stop Loss", format="%.2f"),
-                "Target": st.column_config.NumberColumn("Target", format="%.2f")
+                "Stop Loss": st.column_config.NumberColumn("Stop Loss", format="₹%.2f"),
+                "Target": st.column_config.NumberColumn("Target", format="₹%.2f")
             }
         )
 
-        # 3. TRANSACTION CLEARANCE INTERFACE
         st.markdown("---")
         with st.expander("🛑 Position Clearance / Close Out Ticket", expanded=False):
-            cancel_idx = st.selectbox("Select Row Index to Liquidate / Delete:", portfolio_df.index.tolist())
-            if st.button("❌ Purge Selection From Memory", use_container_width=True):
-                # Adjust for 1-based indexing correction
+            cancel_idx = st.selectbox("Select Row ID to Liquidate:", portfolio_df.index.tolist())
+            if st.button("❌ Close Trade & Remove From Ledger", use_container_width=True):
                 actual_idx = cancel_idx - 1
                 st.session_state['portfolio'] = st.session_state['portfolio'].drop(st.session_state['portfolio'].index[actual_idx]).reset_index(drop=True)
-                st.warning("Ledger database row purge complete.")
+                st.warning("Trade closed. Ledger updated.")
                 st.rerun()
     else:
-        st.info("Your active portfolio ledger is completely empty. Scan the market using Tab 1 and log your active positions to track returns.")
+        st.info("Your active portfolio ledger is completely empty. Execute a paper trade in Tab 1 to track your returns.")
 
 # =====================================================================
 # TAB 3: THE TUTORIAL & STRATEGY GUIDE
