@@ -25,9 +25,13 @@ if 'portfolio' not in st.session_state:
 def tick(val):
     return float(round(float(val) * 20) / 20)
 
-# --- BACKUP LISTS (Shortened for brevity - replace with full lists if needed) ---
-FALLBACK_NIFTY_200 = "RELIANCE, TCS, INFY, HDFCBANK, ICICIBANK, TATAMOTORS, SBIN, BHARTIARTL" 
+# --- THE MASSIVE BACKUP LISTS ---
+FALLBACK_NIFTY_50 = "ADANIENT, ADANIPORTS, APOLLOHOSP, ASIANPAINT, AXISBANK, BAJAJ-AUTO, BAJFINANCE, BAJAJFINSV, BPCL, BHARTIARTL, BRITANNIA, CIPLA, COALINDIA, DIVISLAB, DRREDDY, EICHERMOT, GRASIM, HCLTECH, HDFCBANK, HDFCLIFE, HEROMOTOCO, HINDALCO, HINDUNILVR, ICICIBANK, INDUSINDBK, INFY, ITC, JSWSTEEL, KOTAKBANK, LT, LTIM, M&M, MARUTI, NESTLEIND, NTPC, ONGC, POWERGRID, RELIANCE, SBILIFE, SBIN, SHRIRAMFIN, SUNPHARMA, TATACONSUM, TATAMOTORS, TATASTEEL, TCS, TECHM, TITAN, ULTRACEMCO, WIPRO"
+FALLBACK_NIFTY_100 = FALLBACK_NIFTY_50 + ", ABB, AMBUJACEM, ATGL, AWL, BAJAJHLDNG, BANKBARODA, BEL, BHARATFORG, BHEL, BOSCHLTD, CANBK, CGPOWER, CHOLAMFIN, COCHINSHIP, COLPAL, DABUR, DIXON, DLF, DMART, GAIL, GODREJCP, GODREJPROP, HAL, HAVELLS, ICICIGI, ICICIPRULI, IGL, INDHOTEL, IRFC, JIOFIN, LUPIN, MARICO, MUTHOOTFIN, NAUKRI, NHPC, PIDILITIND, PIIND, PFC, RECLTD, RVNL, SCHAEFFLER, SHREECEM, SIEMENS, SRF, TORNTPHARM, TRENT, TVSMOTOR, UBL, VEDL, ZOMATO"
+FALLBACK_NIFTY_200 = FALLBACK_NIFTY_100 + ", ABCAPITAL, ABFRL, ACC, ALKEM, APARINDS, ASHOKLEY, ASTRAL, AUBANK, AUROPHARMA, BALKRISIND, BANDHANBNK, BANKINDIA, BATAINDIA, BDL, BERGEPAINT, BIOCON, BSE, CDSL, CENTURYTEX, CUB, CONCOR, COROMANDEL, CROMPTON, CUMMINSIND, CYIENT, DALBHARAT, DEEPAKNITR, DELHIVERY, DEVYANI, ESCORTS, EXIDEIND, FACT, FEDERALBNK, FORTIS, GLAND, GLENMARK, GMRINFRA, GUJGASLTD, HINDCOPPER, HINDPETRO, IDBI, IDFCFIRSTB, INDIANB, IPCALAB, IRCTC, JINDALSTEL, JSWENERGY, JUBLFOOD, KALYANKJIL, KANSAINER, KPITTECH, L&TFH, LAURUSLABS, LICHSGFIN, LICI, LODHA, MAHABANK, MANAPPURAM, MAZDOCK, MAXHEALTH, METROPOLIS, MOTILALOFS, MOTHERSON, MPHASIS, MRF, NATCOPHARM, NATIONALUM, NAVINFLUOR, NLCINDIA, NMDC, NYKAA, OBERREALTY, OFSS, OIL, PAGEIND, PATANJALI, PEL, PERSISTENT, PETRONET, PNB, POLYCAB, POONAWALLA, PRESTIGE, RADICO, RBLBANK, SAIL, SBICARD, SJVN, SKFINDIA, SOBHA, SOLARINDS, SONACOMS, SUNTV, SUPREMEIND, SUZLON, SYNGENE, TATACHEM, TATACOMM, TATAELXSI, TATAPOWER, TATATECH, TIINDIA, TORNTPOWER, TRIDENT, UCOBANK, UNIONBANK, VBL, VOLTAS, YESBANK"
+FALLBACK_NIFTY_500 = FALLBACK_NIFTY_200 + ", 360ONE, 3MINDIA, AARTIDRUGS, AARTIIND, AAVAS, ABBOTINDIA, ADVENZYMES, AEGISCHEM, AFFLE, AJANTPHARM, AKZOINDIA, ALEMBICLTD, ALOKINDS, AMARAJABAT, AMBER, ANGELONE, ANURAS, APARINDS, APTUS, APLAPOLLO, ASANIFIN, ASTERDM, ASTRAZEN, ATUL, AVANTIFEED, BATAINDIA, BEML, BLUEDART, BLUESTARCO, BOMDYEING, BRIGADE, BSOFT, CAMPUS, CASTROLIND, CCL, CERA, CGCL, CHALET, CHAMBLFERT, CHEMPLASTS, CHENNPETRO, CAMS, CLEAN, COCHINSHIP, CRAFTSMAN, CREDITACC, CRISIL, CROMPTON, CSBBANK, CUB, CYIENT, DATAPATTNS, DEEPAKFERT, DELTACORP, DEVYANI, EIDPARRY, EIHOTEL, ENDURANCE, ENGINERSIN, EQUITASBNK, ERIS, ESCORTS, ETHER, EXIDEIND, FDC, FINCABLES, FINPIPE, FSL, GABRIEL, GARFIBRES, GEOMETRIC, GLAND, GLENMARK, GMDCLTD, GMMPFAUDLR, GODFRYPHLP, GODREJIND, GRANULES, GRAPHITE, GRINDWELL, GUJALKALI, GUJGASLTD, GNFC, GSFC, HAPPSTMNDS, HATHWAY, HEG, HFCL, HGS, HIKAL, HINDCOPPER, HINDUJAVEN, HINDZINC, HONAUT, HSCL, HUDCO, IBULHSGFIN, ICIL, IDFC, IFBIND, IGL, IIFL, INDIAMART, INDIANB, INDIGOPNTS, INDUSINDBK, INFY, INOXLEISUR, INTELLECT, IOB, IONEXCHANG, IRB, IRCON, ISEC, ISGEC, ITDC, ITDCEM, ITI, J&KBANK, JAGRAN, JAICORPLTD, JSWENERGY, JUBLFOOD, JUBLINGREA, JUBLPHARMA, JUSTDIAL, JYOTHYLAB, KAIT, KAJARIACER, KALPATPOWR, KALYANKJIL, KANSAINER, KAPSTON, KARURVYSYA, KEC, KEI, KIMS, KOTAKBANK, KPITTECH, KPRMILL, KRBL, KSB, LALPATHLAB, LATENTVIEW, LAURUSLABS, LAXMIMACH, LEMONTREE, LICHSGFIN, LICI, LINDEINDIA, LODHA, LUXIND, M&MFIN, MAHABANK, MAHLOG, MAHSCOOTER, MANAPPURAM, MARICO, MASFIN, MASTEK, MATRIMONY, MAXHEALTH, MAZDOCK, MEDPLUS, METROPOLIS, MGL, MINDAIND, MINDACORP, MOLDTKPAC, MOTILALOFS, MPF, MRF, MRPL, MSTC, MTARTECH, MUTHOOTFIN, NATCOPHARM, NATIONALUM, NAVINFLUOR, NAZARA, NCC, NEOGEN, NESCO, NETWORK18, NH, NILKAMAL, NLCINDIA, NMDC, NOCIL, NUVOCO, NYKAA, OBERREALTY, OFSS, OIL, OLECTRA, ORIENTELEC, PAGEIND, PATANJALI, PCBL, PEL, PERSISTENT, PETRONET, PFIZER, PHOENIXLTD, PIIND, PNBHOUSING, PNCINFRA, POLYCAB, POLYMED, POONAWALLA, POWERINDIA, PRAJIND, PRESTIGE, PRINCEPIPE, PRSMJOHNSN, PVRINOX, QUESS, RADICO, RAILTEL, RAIN, RAJESHEXPO, RALLIS, RAMCOCEM, RAMCOIND, RATNAMANI, RBLBANK, RECLTD, REDINGTON, RELAXO, RELIGARE, RESTAURANT, RITES, ROUTE, ROLEXRINGS, ROSSELLIND, RVNL, SAFARI, SAGCEM, SAIL, SANOFI, SAPPHIRE, SAREGAMA, SBICARD, SCHAEFFLER, SCI, SEQUENT, SFL, SHILPAMED, SHOOPERS, SHREECEM, SHRIRAMFIN, SHYAMMETL, SIEMENS, SIS, SJVN, SKFINDIA, SOBHA, SOLARINDS, SONACOMS, SOUTHBANK, SPARC, STARCEMENT, STARHEALTH, STLTECH, SUMICHEM, SUNDARMFIN, SUNDRMFAST, SUNTECK, SUPRAJIT, SUPREMEIND, SURYAROSNI, SUVENPHAR, SUZLON, SWANENERGY, SYMPHONY, SYNGENE, TATACHEM, TATACOMM, TATAELXSI, TATAINVEST, TATAMETALI, TATAPOWER, TATASTEEL, TATATECH, TCI, TCIEXP, TCNSBRANDS, TEJASNET, THERMAX, THOMASCOOK, TIMKEN, TITAGARH, TORNTPHARM, TORNTPOWER, TRENT, TRIDENT, TRITURBINE, TTKPRESTIG, TTML, TV18BRDCST, TVSMOTOR, UCOBANK, UJJIVANSFB, ULTRACEMCO, UNIONBANK, UNOMINDA, UTIAMC, VAKRANGEE, VALIANTORG, VBL, VEDL, VENKEYS, VESUVIUS, VGUARD, VINATIORG, VIPIND, VOLTAS, VRLLOG, VTL, WELCORP, WELENT, WELSPUNIND, WHIRLPOOL, WIPRO, WOCKPHARMA, YESBANK, ZEELEARN, ZEEL, ZENSARTECH, ZOMATO, ZYDUSLIFE, ZYDUSWELL"
 
+# --- LIVE NSE AUTO-UPDATER WITH PROPER ROUTING FIX ---
 @st.cache_data(ttl=86400) 
 def fetch_nse_list(index_name):
     urls = {
@@ -39,10 +43,10 @@ def fetch_nse_list(index_name):
         "Nifty 500": "https://www.niftyindices.com/IndexConstituent/ind_nifty500list.csv"
     }
     if index_name not in urls:
-        return FALLBACK_NIFTY_200
+        return "RELIANCE, TCS, INFY"
     try:
         headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             'Accept': 'text/csv,text/html,application/xhtml+xml',
             'Referer': 'https://www.niftyindices.com/'
         }
@@ -53,7 +57,14 @@ def fetch_nse_list(index_name):
         else:
             raise Exception("Blocked by NSE")
     except Exception:
-        return FALLBACK_NIFTY_200
+        # THE FIX: If blocked by the cloud firewall, correctly route to the massive fallback lists!
+        if index_name == "Nifty 50": return FALLBACK_NIFTY_50
+        if index_name == "Nifty 100": return FALLBACK_NIFTY_100
+        if index_name == "Nifty 200": return FALLBACK_NIFTY_200
+        if index_name == "Nifty 500": return FALLBACK_NIFTY_500
+        if index_name == "Nifty Next 50": return FALLBACK_NIFTY_100 
+        if index_name == "Nifty Midcap 100": return FALLBACK_NIFTY_200 
+        return "RELIANCE, TCS, INFY, HDFCBANK, ICICIBANK, TATAMOTORS, SBIN, BHARTIARTL"
 
 # --- UI NAVIGATION CONFIGURATION ---
 tab_scanner, tab_portfolio, tab_tutorial = st.tabs(["🎯 Live Market Scanner", "💼 Active Ledger", "📖 Logic Guide"])
@@ -203,17 +214,12 @@ with tab_scanner:
                     latest_news = "News unavailable"
                     
                 try:
-                    # THE FIX 1: Add a 1.5-second stealth pause to bypass Yahoo's bot-blocker
                     time.sleep(1.5) 
-                    
                     intra_data = yf.download(t, period="5d", interval="15m", progress=False)
-                    
                     if intra_data is not None and not intra_data.empty:
-                        # THE FIX 2: Flatten the table structure if yfinance uses MultiIndex
                         if isinstance(intra_data.columns, pd.MultiIndex):
                             intra_data.columns = intra_data.columns.droplevel(1)
                             
-                        # 15m Trend Logic
                         intra_data['20_EMA'] = intra_data['Close'].ewm(span=20, adjust=False).mean()
                         last_close = float(intra_data['Close'].iloc[-1])
                         last_ema = float(intra_data['20_EMA'].iloc[-1])
@@ -223,7 +229,6 @@ with tab_scanner:
                         else:
                             intraday_status = "💤 FADING"
                             
-                        # THE FIX 3: Bulletproof date filtering for VWAP
                         today_str = str(intra_data.index[-1].date())
                         today_data = intra_data.loc[today_str].copy()
                         
@@ -231,14 +236,13 @@ with tab_scanner:
                             today_data['Typical_Price'] = (today_data['High'] + today_data['Low'] + today_data['Close']) / 3
                             today_data['TP_V'] = today_data['Typical_Price'] * today_data['Volume']
                             vol_sum = today_data['Volume'].sum()
-                            
                             if vol_sum > 0:
                                 final_vwap = today_data['TP_V'].sum() / vol_sum
                                 if last_close >= final_vwap:
                                     smart_vwap = "🟢 BUYING"
                                 else:
                                     smart_vwap = "🔴 SELLING"
-                except Exception as e:
+                except Exception:
                     intraday_status = "API Blocked"
                     smart_vwap = "API Blocked"
 
@@ -287,7 +291,7 @@ with tab_scanner:
             backup_path = os.path.join(BACKUP_DIR, f"Scan_Log_{timestamp}.csv")
             df_results.to_csv(backup_path, index=False)
         except Exception as e:
-            pass # Fails silently so it never interrupts the app
+            pass 
         
         def color_signals(val):
             if "SNIPER BUY" in val: return 'background-color: #8e44ad; color: white; font-weight: bold;'
@@ -324,7 +328,6 @@ with tab_scanner:
                                     .map(color_intraday, subset=['Live 15m Trend'])\
                                     .map(color_vwap, subset=['Smart Money (VWAP)'])
         
-        # Cleaner UI: hide_index=True removes the messy numbers on the left
         st.dataframe(
             styled_df, 
             use_container_width=True, 
@@ -349,7 +352,6 @@ with tab_scanner:
         st.markdown("---")
         st.subheader("⚡ 1-Click Paper Execution Deck")
         
-        # Filter only stocks that generated a buy signal
         buy_signals_df = df_results[df_results['Signal'].str.contains("BUY", na=False)]
         
         if not buy_signals_df.empty:
@@ -362,10 +364,9 @@ with tab_scanner:
                 with col_qty:
                     trade_qty = st.number_input("Shares to Buy:", min_value=1, value=100, step=10)
                 with col_btn:
-                    st.write("") # Spacing
-                    st.write("") # Spacing
+                    st.write("") 
+                    st.write("") 
                     if st.button("📈 Execute Paper Trade", use_container_width=True, type="primary"):
-                        # Auto-fetch the exact data from the scanner table
                         trade_data = buy_signals_df[buy_signals_df['Ticker'] == selected_trade].iloc[0]
                         new_row = pd.DataFrame([{
                             'Ticker': selected_trade, 
@@ -420,7 +421,6 @@ with tab_portfolio:
     st.header("💼 My Institutional Trade Ledger")
     st.write("Track position scaling and floating net value metrics dynamically across active trade cycles.")
     
-    # MANUAL TICKET OVERRIDE
     with st.expander("⚙️ Manual Ticket Override (Log Custom Trade)", expanded=False):
         form_col1, form_col2, form_col3 = st.columns(3)
         with form_col1:
@@ -445,7 +445,6 @@ with tab_portfolio:
             else:
                 st.error("Symbol input validation failed. Please provide a ticker.")
 
-    # LIVE LEDGER VALUATION
     if not st.session_state['portfolio'].empty:
         portfolio_df = st.session_state['portfolio'].copy()
         unique_tickers = [f"{tk}.NS" for tk in portfolio_df['Ticker'].unique()]
