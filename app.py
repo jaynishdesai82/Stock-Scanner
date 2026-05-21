@@ -5,7 +5,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 st.set_page_config(page_title="Jaynish Multi-Scanner", layout="wide", page_icon="🏆")
-st.title("🏆 Jaynish Trading Terminal")
+st.title("🏆 Jaynish Multi-Scanner")
 
 # --- INITIALIZE PORTFOLIO ---
 if 'portfolio' not in st.session_state:
@@ -42,7 +42,6 @@ with tab_scanner:
             df_results = pd.DataFrame(results)
             st.table(df_results)
             
-            # Paper Trade Button
             st.subheader("Add to Portfolio")
             sel_ticker = st.selectbox("Select Ticker:", df_results['Ticker'].tolist())
             entry = st.number_input("Entry Price:", value=0.0)
