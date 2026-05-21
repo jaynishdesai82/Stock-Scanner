@@ -214,12 +214,17 @@ with tab_scanner:
                     latest_news = "News unavailable"
                     
                 try:
+                    # THE FIX 1: Add a 1.5-second stealth pause to bypass Yahoo's bot-blocker
                     time.sleep(1.5) 
+                    
                     intra_data = yf.download(t, period="5d", interval="15m", progress=False)
+                    
                     if intra_data is not None and not intra_data.empty:
+                        # THE FIX 2: Flatten the table structure if yfinance uses MultiIndex
                         if isinstance(intra_data.columns, pd.MultiIndex):
                             intra_data.columns = intra_data.columns.droplevel(1)
                             
+                        # 15m Trend Logic
                         intra_data['20_EMA'] = intra_data['Close'].ewm(span=20, adjust=False).mean()
                         last_close = float(intra_data['Close'].iloc[-1])
                         last_ema = float(intra_data['20_EMA'].iloc[-1])
@@ -229,6 +234,7 @@ with tab_scanner:
                         else:
                             intraday_status = "💤 FADING"
                             
+                        # THE FIX 3: Bulletproof date filtering for VWAP
                         today_str = str(intra_data.index[-1].date())
                         today_data = intra_data.loc[today_str].copy()
                         
@@ -236,13 +242,14 @@ with tab_scanner:
                             today_data['Typical_Price'] = (today_data['High'] + today_data['Low'] + today_data['Close']) / 3
                             today_data['TP_V'] = today_data['Typical_Price'] * today_data['Volume']
                             vol_sum = today_data['Volume'].sum()
+                            
                             if vol_sum > 0:
                                 final_vwap = today_data['TP_V'].sum() / vol_sum
                                 if last_close >= final_vwap:
                                     smart_vwap = "🟢 BUYING"
                                 else:
                                     smart_vwap = "🔴 SELLING"
-                except Exception:
+                except Exception as e:
                     intraday_status = "API Blocked"
                     smart_vwap = "API Blocked"
 
@@ -291,7 +298,7 @@ with tab_scanner:
             backup_path = os.path.join(BACKUP_DIR, f"Scan_Log_{timestamp}.csv")
             df_results.to_csv(backup_path, index=False)
         except Exception as e:
-            pass 
+            pass # Fails silently so it never interrupts the app
         
         def color_signals(val):
             if "SNIPER BUY" in val: return 'background-color: #8e44ad; color: white; font-weight: bold;'
@@ -328,6 +335,7 @@ with tab_scanner:
                                     .map(color_intraday, subset=['Live 15m Trend'])\
                                     .map(color_vwap, subset=['Smart Money (VWAP)'])
         
+        # Cleaner UI: hide_index=True removes the messy numbers on the left
         st.dataframe(
             styled_df, 
             use_container_width=True, 
@@ -352,6 +360,7 @@ with tab_scanner:
         st.markdown("---")
         st.subheader("⚡ 1-Click Paper Execution Deck")
         
+        # Filter only stocks that generated a buy signal
         buy_signals_df = df_results[df_results['Signal'].str.contains("BUY", na=False)]
         
         if not buy_signals_df.empty:
@@ -364,9 +373,10 @@ with tab_scanner:
                 with col_qty:
                     trade_qty = st.number_input("Shares to Buy:", min_value=1, value=100, step=10)
                 with col_btn:
-                    st.write("") 
-                    st.write("") 
+                    st.write("") # Spacing
+                    st.write("") # Spacing
                     if st.button("📈 Execute Paper Trade", use_container_width=True, type="primary"):
+                        # Auto-fetch the exact data from the scanner table
                         trade_data = buy_signals_df[buy_signals_df['Ticker'] == selected_trade].iloc[0]
                         new_row = pd.DataFrame([{
                             'Ticker': selected_trade, 
@@ -392,12 +402,12 @@ with tab_scanner:
         
         col1, col2 = st.columns(2)
         with col1:
-            st.markdown('<div style="padding:15px; border-radius:5px; background-color:#f0f4f8; border-left:5px solid #8e44ad;">'
+            st.markdown('<div style="padding:15px; border-radius:5px; background-color:#f0f4f8; border-left:5px solid #8e44ad; color:#000000;">'
                         f'<strong>🔥 Sniper Setups:</strong><br><br>'
                         f'{", ".join(sniper_links) if sniper_links else "None right now"}'
                         '</div>', unsafe_allow_html=True)
         with col2:
-            st.markdown('<div style="padding:15px; border-radius:5px; background-color:#eef9f1; border-left:5px solid #2ecc71;">'
+            st.markdown('<div style="padding:15px; border-radius:5px; background-color:#eef9f1; border-left:5px solid #2ecc71; color:#000000;">'
                         f'<strong>🚀 Base Breakouts:</strong><br><br>'
                         f'{", ".join(base_links) if base_links else "None right now"}'
                         '</div>', unsafe_allow_html=True)
@@ -421,6 +431,7 @@ with tab_portfolio:
     st.header("💼 My Institutional Trade Ledger")
     st.write("Track position scaling and floating net value metrics dynamically across active trade cycles.")
     
+    # MANUAL TICKET OVERRIDE
     with st.expander("⚙️ Manual Ticket Override (Log Custom Trade)", expanded=False):
         form_col1, form_col2, form_col3 = st.columns(3)
         with form_col1:
@@ -445,6 +456,7 @@ with tab_portfolio:
             else:
                 st.error("Symbol input validation failed. Please provide a ticker.")
 
+    # LIVE LEDGER VALUATION
     if not st.session_state['portfolio'].empty:
         portfolio_df = st.session_state['portfolio'].copy()
         unique_tickers = [f"{tk}.NS" for tk in portfolio_df['Ticker'].unique()]
@@ -533,7 +545,7 @@ with tab_tutorial:
     with col1:
         st.info("**📈 RVOL (Relative Volume)**\n\nVolume tells you the *truth* behind a price move. RVOL compares today's trading volume to the 20-day average. \n* **Formula:** `Current Volume / 20-Day Avg Volume`\n* **Logic:** If RVOL is 2.5x, it means institutions are buying 2.5 times heavier than normal. This confirms a true breakout.")
         st.warning("**💥 The SQUEEZE (Volatility Profile)**\n\nThe Squeeze uses Bollinger Bands to find stocks that have gone completely 'quiet'. \n* **Logic:** When a stock stops moving, the Bollinger Bands compress. The engine flags a stock when its bands are 18% tighter than their 100-day average. This indicates silent institutional accumulation right before an explosive expansion phase.")
-        st.markdown('<div style="padding:15px; border-radius:5px; background-color:#f9f5ff; border-left:5px solid #8e44ad;">'
+        st.markdown('<div style="padding:15px; border-radius:5px; background-color:#f9f5ff; border-left:5px solid #8e44ad; color:#000000;">'
                     '<strong>🏦 Smart Money (VWAP)</strong><br><br>'
                     'VWAP (Volume Weighted Average Price) is the holy grail of institutional trading.<br>'
                     '<ul><li><strong>🟢 BUYING:</strong> Current price is ABOVE today\'s VWAP. Large funds are actively paying premium prices to accumulate the stock today.</li>'
