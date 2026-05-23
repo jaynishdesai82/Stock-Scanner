@@ -483,7 +483,6 @@ with tab_portfolio:
         live_prices = {}
         for tk in portfolio_df['Ticker'].unique():
             try:
-                # Handle single ticker or multiple ticker dataframe index
                 col_name = f"{tk}.NS" if len(unique_tickers) > 1 else None
                 if col_name and col_name in live_data['Close'].columns:
                     live_prices[tk] = float(live_data['Close'][col_name].iloc[-1])
@@ -512,9 +511,14 @@ with tab_portfolio:
 
         # Export Button
         csv = portfolio_df.to_csv(index=False).encode('utf-8')
-        st.download_button("📥 Export Monthly Ledger to CSV", csv, "Monthly_Ledger.csv", "text/csv")    
+        st.download_button(
+            label="📥 Export Monthly Ledger to CSV", 
+            data=csv, 
+            file_name="Monthly_Ledger.csv", 
+            mime="text/csv"
+        )
     else:
-        st.info("Your active portfolio ledger is completely empty. Execute a paper trade in Tab 1 to track your returns.")
+        st.info("No active positions to display or export.")
 
 # =====================================================================
 # TAB 3: THE NIFTY OPTIONS DESK (STRADDLE/STRANGLE MATRIX)
