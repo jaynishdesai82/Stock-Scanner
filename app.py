@@ -100,10 +100,14 @@ index_choice = st.sidebar.selectbox("Market Index:", ["Nifty 50", "Nifty Next 50
 
 if index_choice == "Custom List":
     user_stocks = st.sidebar.text_area("Watchlist (Separate with commas):", "RELIANCE, TCS, INFY", height=150)
-    ticker_list = [f"{s.strip().upper()}.NS" for s in user_stocks.split(",") if s.strip()]
+    raw_list = [s.strip().upper() for s in user_stocks.split(",") if s.strip()]
 else:
     raw_stocks = fetch_nse_list(index_choice)
-    ticker_list = [f"{s.strip().upper()}.NS" for s in raw_stocks.split(",") if s.strip()]
+    raw_list = [s.strip().upper() for s in raw_stocks.split(",") if s.strip()]
+
+# 🛡️ AUTOMATIC DEDUPLICATION FILTER
+unique_list = list(dict.fromkeys(raw_list)) # Removes duplicates while preserving order
+ticker_list = [f"{s}.NS" for s in unique_list]
 
 st.sidebar.markdown("---")
 volume_multiplier = st.sidebar.slider("RVOL Threshold", 1.5, 3.0, 2.0, 0.1)
