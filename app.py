@@ -512,7 +512,8 @@ with tab_portfolio:
 
         # Export Button
         csv = portfolio_df.to_csv(index=False).encode('utf-8')
-        st.download_button("📥 Export Monthly Ledger to CSV", csv, "Monthly_Ledger.csv", "text/csv")    else:
+        st.download_button("📥 Export Monthly Ledger to CSV", csv, "Monthly_Ledger.csv", "text/csv")    
+    else:
         st.info("Your active portfolio ledger is completely empty. Execute a paper trade in Tab 1 to track your returns.")
 
 # =====================================================================
