@@ -532,8 +532,42 @@ with tab_portfolio:
     else:
         st.info("Your active portfolio ledger is completely empty. Execute a paper trade in Tab 1 to track your returns.")
 
+# --- TAB 3: NIFTY OPTIONS DESK ---
+with tab_options:
+    st.header("📈 Nifty Options Desk")
+    st.write("Quantitative trend analysis for Nifty Index Options.")
+    
+    # Simple Nifty Trend Tracker
+    col_opt1, col_opt2 = st.columns(2)
+    with col_opt1:
+        st.subheader("Nifty Trend Context")
+        # Reuse your scanner logic to check Nifty trend
+        nifty_data = yf.download("^NSEI", period="1y", progress=False)
+        if not nifty_data.empty:
+            nifty_sma50 = nifty_data['Close'].rolling(window=50).mean().iloc[-1]
+            nifty_price = nifty_data['Close'].iloc[-1]
+            
+            trend = "Bullish (Above 50 SMA)" if nifty_price > nifty_sma50 else "Bearish (Below 50 SMA)"
+            st.metric("Nifty Spot Price", f"₹{float(nifty_price):,.2f}")
+            st.write(f"**Market Stance:** {trend}")
+        else:
+            st.error("Could not fetch Nifty data.")
+        
+    with col_opt2:
+        st.subheader("Spread Calculator")
+        entry_price = st.number_input("Option Entry Price (Premium):", min_value=0.0, step=0.5)
+        if entry_price > 0:
+            st.write(f"Target (1:2 RR): ₹{entry_price * 2:,.2f}")
+            st.write(f"Stop Loss (Nifty Level Check): Monitor 15m 20-EMA")
+
+    st.markdown("---")
+    st.info("💡 Strategy Tip: Use Bull Call Spreads when the scanner shows 'Active' trend to minimize time decay (Theta) impact.")
+
+
+
+
 # =====================================================================
-# TAB 3: THE TUTORIAL & STRATEGY GUIDE
+# TAB 4: THE TUTORIAL & STRATEGY GUIDE
 # =====================================================================
 with tab_tutorial:
     st.header("📖 The Jaynish Multi-Scanner Logic Guide")
