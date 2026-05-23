@@ -533,39 +533,103 @@ with tab_portfolio:
         st.info("Your active portfolio ledger is completely empty. Execute a paper trade in Tab 1 to track your returns.")
 
 # =====================================================================
-# TAB 3: THE NIFTY OPTIONS DESK
+# TAB 3: THE NIFTY OPTIONS DESK (STRADDLE/STRANGLE MATRIX)
 # =====================================================================
 with tab_options:
-    st.header("📈 Nifty Options Desk")
-    st.write("Quantitative trend analysis for Nifty Index Options.")
+    st.header("📈 Advanced Options Desk: Volatility Matrix")
+    st.write("Quantitative payoff grids for Straddle and Strangle strategies across 7 strikes.")
     
-    col_opt1, col_opt2 = st.columns(2)
-    with col_opt1:
-        st.subheader("Nifty Trend Context")
-        # Fetch data specifically for Nifty
-        nifty_data = yf.download("^NSEI", period="1d", progress=False)
-        
-        # FIX: Check if data is empty and handle the dataframe structure
-        if not nifty_data.empty:
-            # Flatten columns if necessary (common yfinance fix)
+    # 1. Fetch Current Nifty Data
+    with st.spinner("Fetching Nifty Options Matrix..."):
+        try:
+            nifty_data = yf.download("^NSEI", period="1d", progress=False)
             if isinstance(nifty_data.columns, pd.MultiIndex):
                 nifty_data.columns = nifty_data.columns.get_level_values(0)
+            spot_price = float(nifty_data['Close'].iloc[-1])
+        except Exception:
+            spot_price = 22000.0 # Fallback if API fails
             
-            latest_nifty = float(nifty_data['Close'].iloc[-1])
-            st.metric("Nifty Spot Price", f"₹{latest_nifty:,.2f}")
-        else:
-            st.error("Nifty data unavailable.")
-            
+    # Round spot to nearest 50 for realistic Nifty Strikes
+    atm_strike = round(spot_price / 50) * 50
+    
+    col_opt1, col_opt2 = st.columns([1, 2])
+    
+    with col_opt1:
+        st.subheader("Market Context")
+        st.metric("Nifty Spot Price", f"₹{spot_price:,.2f}")
+        st.metric("Detected ATM Strike", f"₹{atm_strike:,.2f}")
+        
+        st.markdown("---")
+        st.subheader("Strategy Parameters")
+        strat_type = st.selectbox("Select Strategy Setup:", ["Long Straddle (Buy)", "Short Straddle (Sell)", "Long Strangle (Buy)", "Short Strangle (Sell)"])
+        strike_gap = st.number_input("Strike Interval Gap (e.g., 50, 100):", min_value=50, step=50, value=100)
+        
+        st.markdown("*(Assuming simulated premiums for calculation)*")
+        call_prem = st.number_input("Est. Call Premium (₹):", value=120.0, step=5.0)
+        put_prem = st.number_input("Est. Put Premium (₹):", value=115.0, step=5.0)
+        lot_size = st.number_input("Lot Size:", value=25) # Nifty Lot Size
+
     with col_opt2:
-        st.subheader("Spread Calculator")
-        entry = st.number_input("Option Premium:", min_value=0.0, step=0.5)
-        if entry > 0: 
-            st.write(f"**Target (1:2 RR):** ₹{entry * 2:,.2f}")
-            st.write("**Stop Loss:** Monitor 15m 20-EMA on Nifty Spot")
-
-    st.markdown("---")
-    st.info("💡 Strategy Tip: Use Bull Call Spreads when the scanner shows 'Active' trend to minimize time decay (Theta) impact.")
-
+        st.subheader(f"7-Strike Payoff Matrix: {strat_type}")
+        
+        # Generate the 7 Strike Grid
+        strikes = [atm_strike + (i * strike_gap) for i in range(-3, 4)]
+        
+        payoff_data = []
+        for exp_price in strikes:
+            net_pnl = 0
+            
+            if "Straddle" in strat_type:
+                # Both Call and Put are at ATM Strike
+                call_value = max(0, exp_price - atm_strike)
+                put_value = max(0, atm_strike - exp_price)
+                
+                if "Long" in strat_type:
+                    net_pnl = (call_value - call_prem) + (put_value - put_prem)
+                else: # Short
+                    net_pnl = (call_prem - call_value) + (put_prem - put_value)
+                    
+            elif "Strangle" in strat_type:
+                # Strangle uses OTM Strikes (ATM + Gap, ATM - Gap)
+                call_strike = atm_strike + strike_gap
+                put_strike = atm_strike - strike_gap
+                
+                call_value = max(0, exp_price - call_strike)
+                put_value = max(0, put_strike - exp_price)
+                
+                if "Long" in strat_type:
+                    net_pnl = (call_value - call_prem) + (put_value - put_prem)
+                else: # Short
+                    net_pnl = (call_prem - call_value) + (put_prem - put_value)
+            
+            # Convert to actual Rupee P&L per Lot
+            total_pnl = net_pnl * lot_size
+            
+            status = "🟢 PROFIT" if total_pnl > 0 else "🔴 LOSS"
+            if total_pnl == 0: status = "⚪ BREAKEVEN"
+                
+            payoff_data.append({
+                "Expiry Nifty Price": f"₹{exp_price:,.0f}",
+                "Scenario": "ATM" if exp_price == atm_strike else f"{abs(int(exp_price - atm_strike))} Points Move",
+                "Net Points P&L": round(net_pnl, 2),
+                "Total ₹ P&L (1 Lot)": f"₹{total_pnl:,.2f}",
+                "Status": status
+            })
+            
+        df_payoff = pd.DataFrame(payoff_data)
+        
+        def highlight_pnl(val):
+            if "PROFIT" in val: return 'color: #2ecc71; font-weight:bold;'
+            if "LOSS" in val: return 'color: #e74c3c; font-weight:bold;'
+            return ''
+            
+        st.dataframe(df_payoff.style.map(highlight_pnl, subset=['Status']), use_container_width=True, hide_index=True)
+        
+        # Display Core Strategy Summary
+        if "Long" in strat_type:
+            st.info("💡 **Strategy Logic:** You bought both legs. Your maximum loss is limited to the premiums paid. You need a massive breakout/breakdown to achieve unlimited profit.")
+        else:
+            st.warning("⚠️ **Strategy Logic:** You sold both legs. Your maximum profit is capped at the premium collected. Your risk is technically unlimited if the market moves violently.")
 # =====================================================================
 # TAB 4: THE TUTORIAL & STRATEGY GUIDE
 # =====================================================================
