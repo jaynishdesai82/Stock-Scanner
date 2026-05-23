@@ -25,6 +25,30 @@ if 'portfolio' not in st.session_state:
 def tick(val):
     return float(round(float(val) * 20) / 20)
 
+# --- STEALTH SCRAPER LIVE OPTIONS CONNECTION TEST ---
+def test_live_option_chain():
+    try:
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': '*/*',
+            'Accept-Encoding': 'gzip, deflate, br'
+        }
+        session = requests.Session()
+        # Step 1: Visit homepage to get cookies
+        session.get("https://www.nseindia.com", headers=headers, timeout=5)
+        
+        # Step 2: Request the Nifty Option Chain
+        url = "https://www.nseindia.com/api/option-chain-indices?symbol=NIFTY"
+        response = session.get(url, headers=headers, timeout=5)
+        
+        if response.status_code == 200:
+            data = response.json()
+            return f"✅ SUCCESS! Fetched {len(data['records']['data'])} Option Strikes."
+        else:
+            return f"❌ BLOCKED: NSE returned Status Code {response.status_code}"
+    except Exception as e:
+        return f"❌ ERROR: {e}"
+
 # --- THE MASSIVE BACKUP LISTS ---
 FALLBACK_NIFTY_50 = "ADANIENT, ADANIPORTS, APOLLOHOSP, ASIANPAINT, AXISBANK, BAJAJ-AUTO, BAJFINANCE, BAJAJFINSV, BPCL, BHARTIARTL, BRITANNIA, CIPLA, COALINDIA, DIVISLAB, DRREDDY, EICHERMOT, GRASIM, HCLTECH, HDFCBANK, HDFCLIFE, HEROMOTOCO, HINDALCO, HINDUNILVR, ICICIBANK, INDUSINDBK, INFY, ITC, JSWSTEEL, KOTAKBANK, LT, LTIM, M&M, MARUTI, NESTLEIND, NTPC, ONGC, POWERGRID, RELIANCE, SBILIFE, SBIN, SHRIRAMFIN, SUNPHARMA, TATACONSUM, TATAMOTORS, TATASTEEL, TCS, TECHM, TITAN, ULTRACEMCO, WIPRO"
 FALLBACK_NIFTY_100 = FALLBACK_NIFTY_50 + ", ABB, AMBUJACEM, ATGL, AWL, BAJAJHLDNG, BANKBARODA, BEL, BHARATFORG, BHEL, BOSCHLTD, CANBK, CGPOWER, CHOLAMFIN, COCHINSHIP, COLPAL, DABUR, DIXON, DLF, DMART, GAIL, GODREJCP, GODREJPROP, HAL, HAVELLS, ICICIGI, ICICIPRULI, IGL, INDHOTEL, IRFC, JIOFIN, LUPIN, MARICO, MUTHOOTFIN, NAUKRI, NHPC, PIDILITIND, PIIND, PFC, RECLTD, RVNL, SCHAEFFLER, SHREECEM, SIEMENS, SRF, TORNTPHARM, TRENT, TVSMOTOR, UBL, VEDL, ZOMATO"
@@ -57,7 +81,6 @@ def fetch_nse_list(index_name):
         else:
             raise Exception("Blocked by NSE")
     except Exception:
-        # THE FIX: If blocked by the cloud firewall, correctly route to the massive fallback lists!
         if index_name == "Nifty 50": return FALLBACK_NIFTY_50
         if index_name == "Nifty 100": return FALLBACK_NIFTY_100
         if index_name == "Nifty 200": return FALLBACK_NIFTY_200
@@ -103,7 +126,6 @@ with tab_scanner:
         download_list.append("^NSEI")
 
     with st.spinner(f"Synchronizing {index_choice} pricing matrix..."):
-        # BATCH DOWNLOAD (threads=False to bypass cloud server blocking)
         data = yf.download(download_list, period="1y", group_by='ticker', threads=False, progress=False)
 
     try:
@@ -214,17 +236,12 @@ with tab_scanner:
                     latest_news = "News unavailable"
                     
                 try:
-                    # THE FIX 1: Add a 1.5-second stealth pause to bypass Yahoo's bot-blocker
                     time.sleep(1.5) 
-                    
                     intra_data = yf.download(t, period="5d", interval="15m", progress=False)
-                    
                     if intra_data is not None and not intra_data.empty:
-                        # THE FIX 2: Flatten the table structure if yfinance uses MultiIndex
                         if isinstance(intra_data.columns, pd.MultiIndex):
                             intra_data.columns = intra_data.columns.droplevel(1)
                             
-                        # 15m Trend Logic
                         intra_data['20_EMA'] = intra_data['Close'].ewm(span=20, adjust=False).mean()
                         last_close = float(intra_data['Close'].iloc[-1])
                         last_ema = float(intra_data['20_EMA'].iloc[-1])
@@ -234,7 +251,6 @@ with tab_scanner:
                         else:
                             intraday_status = "💤 FADING"
                             
-                        # THE FIX 3: Bulletproof date filtering for VWAP
                         today_str = str(intra_data.index[-1].date())
                         today_data = intra_data.loc[today_str].copy()
                         
@@ -292,13 +308,12 @@ with tab_scanner:
     if results:
         df_results = pd.DataFrame(results)
         
-        # --- SILENT AUTO-BACKUP EXECUTION ---
         try:
             timestamp = time.strftime('%Y%m%d_%H%M%S')
             backup_path = os.path.join(BACKUP_DIR, f"Scan_Log_{timestamp}.csv")
             df_results.to_csv(backup_path, index=False)
         except Exception as e:
-            pass # Fails silently so it never interrupts the app
+            pass 
         
         def color_signals(val):
             if "SNIPER BUY" in val: return 'background-color: #8e44ad; color: white; font-weight: bold;'
@@ -335,7 +350,6 @@ with tab_scanner:
                                     .map(color_intraday, subset=['Live 15m Trend'])\
                                     .map(color_vwap, subset=['Smart Money (VWAP)'])
         
-        # Cleaner UI: hide_index=True removes the messy numbers on the left
         st.dataframe(
             styled_df, 
             use_container_width=True, 
@@ -356,16 +370,13 @@ with tab_scanner:
         if skipped_count > 0:
             st.caption(f"*(Note: {skipped_count} stocks were automatically excluded from this scan due to lack of historical data).*")
         
-        # --- NEW: INLINE TRADE EXECUTION DECK ---
         st.markdown("---")
         st.subheader("⚡ 1-Click Paper Execution Deck")
         
-        # Filter only stocks that generated a buy signal
         buy_signals_df = df_results[df_results['Signal'].str.contains("BUY", na=False)]
         
         if not buy_signals_df.empty:
             buy_tickers = buy_signals_df['Ticker'].tolist()
-            
             with st.container():
                 col_tk, col_qty, col_btn = st.columns([2, 1, 1])
                 with col_tk:
@@ -373,10 +384,9 @@ with tab_scanner:
                 with col_qty:
                     trade_qty = st.number_input("Shares to Buy:", min_value=1, value=100, step=10)
                 with col_btn:
-                    st.write("") # Spacing
-                    st.write("") # Spacing
+                    st.write("") 
+                    st.write("") 
                     if st.button("📈 Execute Paper Trade", use_container_width=True, type="primary"):
-                        # Auto-fetch the exact data from the scanner table
                         trade_data = buy_signals_df[buy_signals_df['Ticker'] == selected_trade].iloc[0]
                         new_row = pd.DataFrame([{
                             'Ticker': selected_trade, 
@@ -431,7 +441,6 @@ with tab_portfolio:
     st.header("💼 My Institutional Trade Ledger")
     st.write("Track position scaling and floating net value metrics dynamically across active trade cycles.")
     
-    # MANUAL TICKET OVERRIDE
     with st.expander("⚙️ Manual Ticket Override (Log Custom Trade)", expanded=False):
         form_col1, form_col2, form_col3 = st.columns(3)
         with form_col1:
@@ -456,7 +465,6 @@ with tab_portfolio:
             else:
                 st.error("Symbol input validation failed. Please provide a ticker.")
 
-    # LIVE LEDGER VALUATION
     if not st.session_state['portfolio'].empty:
         portfolio_df = st.session_state['portfolio'].copy()
         unique_tickers = [f"{tk}.NS" for tk in portfolio_df['Ticker'].unique()]
@@ -625,11 +633,20 @@ with tab_options:
             
         st.dataframe(df_payoff.style.map(highlight_pnl, subset=['Status']), use_container_width=True, hide_index=True)
         
-        # Display Core Strategy Summary
         if "Long" in strat_type:
             st.info("💡 **Strategy Logic:** You bought both legs. Your maximum loss is limited to the premiums paid. You need a massive breakout/breakdown to achieve unlimited profit.")
         else:
             st.warning("⚠️ **Strategy Logic:** You sold both legs. Your maximum profit is capped at the premium collected. Your risk is technically unlimited if the market moves violently.")
+
+    st.markdown("---")
+    st.subheader("📡 Live Options Data Connection Test")
+    st.write("Test if Streamlit Cloud can successfully bypass the NSE firewall to fetch live premiums directly.")
+    if st.button("Test Live NSE Option Chain Connection"):
+        with st.spinner("Spoofing browser and pinging NSE..."):
+            result = test_live_option_chain()
+            st.write(result)
+
+
 # =====================================================================
 # TAB 4: THE TUTORIAL & STRATEGY GUIDE
 # =====================================================================
