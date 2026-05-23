@@ -440,7 +440,16 @@ with tab_scanner:
 with tab_portfolio:
     st.header("💼 My Institutional Trade Ledger")
     st.write("Track position scaling and floating net value metrics dynamically across active trade cycles.")
+
+    # --- 1. PERSISTENCE: UPLOAD / DOWNLOAD ---
+    col_up, col_dn = st.columns(2)
+    with col_up:
+        uploaded_file = st.file_uploader("📂 Upload Previous Day's Ledger (CSV):", type="csv")
+        if uploaded_file:
+            st.session_state['portfolio'] = pd.read_csv(uploaded_file)
+            st.rerun()
     
+    # --- 2. MANUAL TICKET OVERRIDE ---
     with st.expander("⚙️ Manual Ticket Override (Log Custom Trade)", expanded=False):
         form_col1, form_col2, form_col3 = st.columns(3)
         with form_col1:
@@ -460,11 +469,9 @@ with tab_portfolio:
                     'Quantity': add_qty, 'Stop Loss': add_sl, 'Target': add_tgt
                 }])
                 st.session_state['portfolio'] = pd.concat([st.session_state['portfolio'], new_row], ignore_index=True)
-                st.success(f"Manual Position for {add_tk} successfully committed to ledger memory.")
                 st.rerun()
-            else:
-                st.error("Symbol input validation failed. Please provide a ticker.")
 
+    # --- 3. REAL-TIME VALUATION & DISPLAY ---
     if not st.session_state['portfolio'].empty:
         portfolio_df = st.session_state['portfolio'].copy()
         unique_tickers = [f"{tk}.NS" for tk in portfolio_df['Ticker'].unique()]
@@ -472,13 +479,16 @@ with tab_portfolio:
         with st.spinner("Synchronizing real-time floating ledger valuations..."):
             live_data = yf.download(unique_tickers, period="1d", progress=False)
             
+        # Pricing logic
         live_prices = {}
         for tk in portfolio_df['Ticker'].unique():
             try:
-                if len(unique_tickers) == 1:
-                    live_prices[tk] = float(live_data['Close'].iloc[-1])
+                # Handle single ticker or multiple ticker dataframe index
+                col_name = f"{tk}.NS" if len(unique_tickers) > 1 else None
+                if col_name and col_name in live_data['Close'].columns:
+                    live_prices[tk] = float(live_data['Close'][col_name].iloc[-1])
                 else:
-                    live_prices[tk] = float(live_data['Close'][f"{tk}.NS"].iloc[-1])
+                    live_prices[tk] = float(live_data['Close'].iloc[-1])
             except Exception:
                 live_prices[tk] = None
 
@@ -486,58 +496,23 @@ with tab_portfolio:
         portfolio_df['Total Investment'] = portfolio_df['Entry Price'] * portfolio_df['Quantity']
         portfolio_df['Current Value'] = portfolio_df['Live Price (₹)'].fillna(portfolio_df['Entry Price']) * portfolio_df['Quantity']
         portfolio_df['Net P&L (₹)'] = portfolio_df['Current Value'] - portfolio_df['Total Investment']
-        portfolio_df['Total Return %'] = (portfolio_df['Net P&L (₹)'] / portfolio_df['Total Investment']) * 100
-
-        total_capital = portfolio_df['Total Investment'].sum()
-        current_equity = portfolio_df['Current Value'].sum()
-        portfolio_pnl_rs = current_equity - total_capital
-        portfolio_pnl_pct = (portfolio_pnl_rs / total_capital * 100) if total_capital > 0 else 0.0
-
-        card_col1, card_col2, card_col3 = st.columns(3)
-        card_col1.metric("Deployed Capital", f"₹{total_capital:,.2f}")
-        card_col2.metric("Net Liquid Equity", f"₹{current_equity:,.2f}")
         
-        if portfolio_pnl_rs >= 0:
-            card_col3.metric("Floating Net P&L", f"₹{portfolio_pnl_rs:,.2f}", f"+{portfolio_pnl_pct:.2f}%")
-        else:
-            card_col3.metric("Floating Net P&L", f"₹{portfolio_pnl_rs:,.2f}", f"{portfolio_pnl_pct:.2f}%", delta_color="inverse")
+        # Display Metrics
+        total_cap = portfolio_df['Total Investment'].sum()
+        curr_eq = portfolio_df['Current Value'].sum()
+        pnl_rs = curr_eq - total_cap
+        
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Deployed Capital", f"₹{total_cap:,.2f}")
+        c2.metric("Net Liquid Equity", f"₹{curr_eq:,.2f}")
+        c3.metric("Floating Net P&L", f"₹{pnl_rs:,.2f}")
 
-        st.markdown("---")
-        st.subheader("📊 Deployed Asset Positions")
+        # Dataframe Styling
+        st.dataframe(portfolio_df, use_container_width=True)
 
-        def style_portfolio(row):
-            pnl = row['Net P&L (₹)']
-            color = 'background-color: #eef9f1; color: #2ecc71; font-weight: bold;' if pnl >= 0 else 'background-color: #fdf2f2; color: #e74c3c;'
-            return [color if col in ['Net P&L (₹)', 'Total Return %'] else '' for col in row.index]
-
-        portfolio_df.index = portfolio_df.index + 1
-        styled_port = portfolio_df.style.apply(style_portfolio, axis=1)
-
-        st.dataframe(
-            styled_port,
-            use_container_width=True,
-            hide_index=True,
-            column_config={
-                "Entry Price": st.column_config.NumberColumn("Entry Price", format="₹%.2f"),
-                "Live Price (₹)": st.column_config.NumberColumn("Live Price (₹)", format="₹%.2f"),
-                "Total Investment": st.column_config.NumberColumn("Total Deployed", format="₹%d"),
-                "Current Value": st.column_config.NumberColumn("Current Value", format="₹%d"),
-                "Net P&L (₹)": st.column_config.NumberColumn("Net P&L (₹)", format="₹%.2f"),
-                "Total Return %": st.column_config.NumberColumn("Total Return %", format="%.2f%%"),
-                "Stop Loss": st.column_config.NumberColumn("Stop Loss", format="₹%.2f"),
-                "Target": st.column_config.NumberColumn("Target", format="₹%.2f")
-            }
-        )
-
-        st.markdown("---")
-        with st.expander("🛑 Position Clearance / Close Out Ticket", expanded=False):
-            cancel_idx = st.selectbox("Select Row ID to Liquidate:", portfolio_df.index.tolist())
-            if st.button("❌ Close Trade & Remove From Ledger", use_container_width=True):
-                actual_idx = cancel_idx - 1
-                st.session_state['portfolio'] = st.session_state['portfolio'].drop(st.session_state['portfolio'].index[actual_idx]).reset_index(drop=True)
-                st.warning("Trade closed. Ledger updated.")
-                st.rerun()
-    else:
+        # Export Button
+        csv = portfolio_df.to_csv(index=False).encode('utf-8')
+        st.download_button("📥 Export Monthly Ledger to CSV", csv, "Monthly_Ledger.csv", "text/csv")    else:
         st.info("Your active portfolio ledger is completely empty. Execute a paper trade in Tab 1 to track your returns.")
 
 # =====================================================================
