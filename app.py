@@ -9,8 +9,8 @@ import warnings
 warnings.filterwarnings('ignore')
 
 # --- PAGE CONFIGURATION ---
-st.set_page_config(page_title="Jaynish Multi-Scanner", layout="wide", page_icon="🏆")
-st.title("🏆 Jaynish Trading Terminal")
+st.set_page_config(page_title="Simple Multi-Scanner", layout="wide", page_icon="📈")
+st.title("📈 Simple Trading Terminal")
 st.write("Quantitative momentum engine and real-time paper execution ledger.")
 
 # --- SILENT AUTO-BACKUP DIRECTORY SETUP ---
@@ -20,7 +20,10 @@ if not os.path.exists(BACKUP_DIR):
 
 # --- INITIALIZE DATABASES IN MEMORY ---
 if 'portfolio' not in st.session_state:
-    st.session_state['portfolio'] = pd.DataFrame(columns=['Ticker', 'Type', 'Entry Price', 'Quantity', 'Stop Loss', 'Target'])
+    st.session_state['portfolio'] = pd.DataFrame(columns=['Buy Date', 'Ticker', 'Type', 'Entry Price', 'Quantity', 'Stop Loss', 'Target'])
+
+if 'closed_trades' not in st.session_state:
+    st.session_state['closed_trades'] = pd.DataFrame(columns=['Buy Date', 'Sell Date', 'Ticker', 'Type', 'Entry Price', 'Exit Price', 'Quantity', 'Realized P&L (₹)', 'Return %'])
 
 if 'scan_results' not in st.session_state:
     st.session_state['scan_results'] = pd.DataFrame()
@@ -41,6 +44,7 @@ def test_live_option_chain():
         }
         session = requests.Session()
         session.get("https://www.nseindia.com", headers=headers, timeout=5)
+        
         url = "https://www.nseindia.com/api/option-chain-indices?symbol=NIFTY"
         response = session.get(url, headers=headers, timeout=5)
         
@@ -100,7 +104,7 @@ app_mode = st.sidebar.radio("Scanner Engine:", ["📊 Base Version", "🔥 Pro V
 st.sidebar.markdown("---")
 index_choice = st.sidebar.selectbox("Market Index:", ["Nifty 50", "Nifty Next 50", "Nifty 100", "Nifty Midcap 100", "Nifty 200", "Nifty 500", "Custom List"])
 
-# --- NEW: DEDUPLICATION FIX ---
+# --- DEDUPLICATION FIX ---
 if index_choice == "Custom List":
     user_stocks = st.sidebar.text_area("Watchlist (Separate with commas):", "RELIANCE, TCS, INFY", height=150)
     raw_list = [s.strip().upper() for s in user_stocks.split(",") if s.strip()]
@@ -116,7 +120,7 @@ volume_multiplier = st.sidebar.slider("RVOL Threshold", 1.5, 3.0, 2.0, 0.1)
 risk_pct = st.sidebar.slider("Stop Loss %", 3.0, 8.0, 5.0, 0.5)
 
 st.sidebar.markdown("---")
-# --- NEW: THE RUN SCAN BUTTON ---
+# --- THE RUN SCAN BUTTON ---
 run_scan = st.sidebar.button("🚀 RUN MARKET SCAN", use_container_width=True, type="primary")
 st.sidebar.markdown("---")
 
@@ -408,6 +412,7 @@ with tab_scanner:
                     if st.button("📈 Execute Paper Trade", use_container_width=True, type="primary"):
                         trade_data = buy_signals_df[buy_signals_df['Ticker'] == selected_trade].iloc[0]
                         new_row = pd.DataFrame([{
+                            'Buy Date': str(time.strftime('%Y-%m-%d')), # <--- ADDED BUY DATE
                             'Ticker': selected_trade, 
                             'Type': trade_data['Signal'], 
                             'Entry Price': float(trade_data['Price (₹)']),
@@ -446,7 +451,7 @@ with tab_scanner:
         st.download_button(
             label="📥 Manual Export (Log also saved automatically in background)",
             data=csv_data,
-            file_name=f"Jaynish_Scanner_Log_{time.strftime('%Y%m%d_%H%M%S')}.csv",
+            file_name=f"Simple_Scanner_Log_{time.strftime('%Y%m%d_%H%M%S')}.csv",
             mime="text/csv",
             use_container_width=True
         )
@@ -472,6 +477,7 @@ with tab_portfolio:
     with st.expander("⚙️ Manual Ticket Override (Log Custom Trade)", expanded=False):
         form_col1, form_col2, form_col3 = st.columns(3)
         with form_col1:
+            add_date = st.date_input("Buy Date:") # <--- ADDED BUY DATE
             add_tk = st.text_input("Stock Symbol (e.g., RELIANCE):").strip().upper()
             add_type = st.selectbox("Setup Execution Mode:", ["🔥 SNIPER", "🚀 BASE", "⏳ STRATEGIC HOLD"])
         with form_col2:
@@ -484,6 +490,7 @@ with tab_portfolio:
         if st.button("💾 Lock Manual Position Into Database", use_container_width=True):
             if add_tk:
                 new_row = pd.DataFrame([{
+                    'Buy Date': str(add_date), # <--- ADDED BUY DATE
                     'Ticker': add_tk, 'Type': add_type, 'Entry Price': add_price,
                     'Quantity': add_qty, 'Stop Loss': add_sl, 'Target': add_tgt
                 }])
@@ -533,6 +540,13 @@ with tab_portfolio:
             return [color if col in ['Net P&L (₹)', 'Total Return %'] else '' for col in row.index]
 
         portfolio_df.index = portfolio_df.index + 1
+        
+        # Reorder to ensure Buy Date is early in the view
+        cols = portfolio_df.columns.tolist()
+        if 'Buy Date' in cols:
+            cols.insert(0, cols.pop(cols.index('Buy Date')))
+            portfolio_df = portfolio_df[cols]
+            
         styled_port = portfolio_df.style.apply(style_portfolio, axis=1)
 
         st.dataframe(
@@ -540,6 +554,7 @@ with tab_portfolio:
             use_container_width=True,
             hide_index=True,
             column_config={
+                "Buy Date": st.column_config.TextColumn("Buy Date"),
                 "Entry Price": st.column_config.NumberColumn("Entry Price", format="₹%.2f"),
                 "Live Price (₹)": st.column_config.NumberColumn("Live Price (₹)", format="₹%.2f"),
                 "Total Investment": st.column_config.NumberColumn("Total Deployed", format="₹%d"),
@@ -552,24 +567,94 @@ with tab_portfolio:
         )
 
         st.markdown("---")
+        # --- NEW: CLOSED TRADES ARCHIVE LOGIC ---
         with st.expander("🛑 Position Clearance / Close Out Ticket", expanded=False):
-            cancel_idx = st.selectbox("Select Row ID to Liquidate:", portfolio_df.index.tolist())
-            if st.button("❌ Close Trade & Remove From Ledger", use_container_width=True):
+            close_col1, close_col2, close_col3 = st.columns(3)
+            with close_col1:
+                cancel_idx = st.selectbox("Select Row ID to Liquidate:", portfolio_df.index.tolist())
+            with close_col2:
+                sell_date = st.date_input("Sell Date:")
+            with close_col3:
+                # Default exit price to live price if available
+                default_exit = float(portfolio_df.loc[cancel_idx, 'Live Price (₹)']) if not pd.isna(portfolio_df.loc[cancel_idx, 'Live Price (₹)']) else 0.0
+                exit_price = st.number_input("Final Exit Price (₹):", value=default_exit, step=0.05)
+                
+            if st.button("❌ Close Trade & Move to Archive", use_container_width=True):
                 actual_idx = cancel_idx - 1
+                trade = st.session_state['portfolio'].iloc[actual_idx]
+                
+                # Calculate final metrics
+                invested = trade['Entry Price'] * trade['Quantity']
+                returned = exit_price * trade['Quantity']
+                final_pnl = returned - invested
+                final_return = (final_pnl / invested) * 100 if invested > 0 else 0
+                
+                closed_row = pd.DataFrame([{
+                    'Buy Date': trade.get('Buy Date', 'N/A'),
+                    'Sell Date': str(sell_date),
+                    'Ticker': trade['Ticker'],
+                    'Type': trade['Type'],
+                    'Entry Price': trade['Entry Price'],
+                    'Exit Price': exit_price,
+                    'Quantity': trade['Quantity'],
+                    'Realized P&L (₹)': final_pnl,
+                    'Return %': final_return
+                }])
+                
+                # Move to Archive and Remove from Active
+                st.session_state['closed_trades'] = pd.concat([st.session_state['closed_trades'], closed_row], ignore_index=True)
                 st.session_state['portfolio'] = st.session_state['portfolio'].drop(st.session_state['portfolio'].index[actual_idx]).reset_index(drop=True)
-                st.warning("Trade closed. Ledger updated.")
+                
+                st.warning(f"Trade closed! Realized P&L: ₹{final_pnl:,.2f}. Moved to Archive.")
                 st.rerun()
 
         # Export Button (Properly indented)
         csv_port = st.session_state['portfolio'].to_csv(index=False).encode('utf-8')
         st.download_button(
-            label="📥 Export Monthly Ledger to CSV", 
+            label="📥 Export Active Ledger to CSV", 
             data=csv_port, 
-            file_name="Monthly_Ledger.csv", 
+            file_name="Simple_Active_Ledger.csv", 
             mime="text/csv"
         )
     else:
         st.info("No active positions to display or export.")
+        
+    # --- SHOW CLOSED TRADES ARCHIVE ---
+    if not st.session_state['closed_trades'].empty:
+        st.markdown("---")
+        st.subheader("🗄️ Closed Trades Archive")
+        st.write("Historical record of all closed positions and realized profit/loss.")
+        
+        archive_df = st.session_state['closed_trades'].copy()
+        archive_df.index = archive_df.index + 1
+        
+        def style_archive(row):
+            pnl = row['Realized P&L (₹)']
+            color = 'background-color: #eef9f1; color: #2ecc71; font-weight: bold;' if pnl >= 0 else 'background-color: #fdf2f2; color: #e74c3c;'
+            return [color if col in ['Realized P&L (₹)', 'Return %'] else '' for col in row.index]
+            
+        styled_archive = archive_df.style.apply(style_archive, axis=1)
+        
+        st.dataframe(
+            styled_archive,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "Entry Price": st.column_config.NumberColumn("Entry Price", format="₹%.2f"),
+                "Exit Price": st.column_config.NumberColumn("Exit Price", format="₹%.2f"),
+                "Realized P&L (₹)": st.column_config.NumberColumn("Realized P&L (₹)", format="₹%.2f"),
+                "Return %": st.column_config.NumberColumn("Return %", format="%.2f%%"),
+            }
+        )
+        
+        # Export Archive
+        csv_archive = st.session_state['closed_trades'].to_csv(index=False).encode('utf-8')
+        st.download_button(
+            label="📥 Export Closed Archive to CSV", 
+            data=csv_archive, 
+            file_name="Simple_Closed_Archive.csv", 
+            mime="text/csv"
+        )
 
 # =====================================================================
 # TAB 3: THE NIFTY OPTIONS DESK (STRADDLE/STRANGLE MATRIX)
@@ -682,7 +767,7 @@ with tab_options:
 # TAB 4: THE TUTORIAL & STRATEGY GUIDE
 # =====================================================================
 with tab_tutorial:
-    st.header("📖 The Jaynish Multi-Scanner Logic Guide")
+    st.header("📖 The Simple Multi-Scanner Logic Guide")
     st.write("Welcome to the engine room. Here is exactly how the scanner computes data and generates trading signals.")
     
     st.markdown("---")
@@ -717,11 +802,11 @@ with tab_tutorial:
     3. **Pullback Proximity:** The price cannot be more than 8% away from the 50-Day SMA (Prevents buying extended, risky charts).
     """)
     st.markdown("---")
-    st.caption("Built for Institutional Momentum Trading | Designed by Jaynish")
+    st.caption("Built for Institutional Momentum Trading")
 
 # --- GLOBAL AUTO REFRESH LOOP ---
 if sleep_time > 0:
     st.sidebar.success(f"⏱️ Auto-Pilot Active: Refreshing in {sleep_time} seconds.")
     time.sleep(sleep_time)
-    if run_scan: # Only rerun if we actually clicked scan recently to avoid looping empty states
+    if run_scan: 
         st.rerun()
