@@ -6,6 +6,9 @@ import requests
 import io
 import os
 import warnings
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+
 warnings.filterwarnings('ignore')
 
 # --- PAGE CONFIGURATION ---
@@ -104,7 +107,6 @@ app_mode = st.sidebar.radio("Scanner Engine:", ["📊 Base Version", "🔥 Pro V
 st.sidebar.markdown("---")
 index_choice = st.sidebar.selectbox("Market Index:", ["Nifty 50", "Nifty Next 50", "Nifty 100", "Nifty Midcap 100", "Nifty 200", "Nifty 500", "Custom List"])
 
-# --- DEDUPLICATION FIX ---
 if index_choice == "Custom List":
     user_stocks = st.sidebar.text_area("Watchlist (Separate with commas):", "RELIANCE, TCS, INFY", height=150)
     raw_list = [s.strip().upper() for s in user_stocks.split(",") if s.strip()]
@@ -112,7 +114,7 @@ else:
     raw_stocks = fetch_nse_list(index_choice)
     raw_list = [s.strip().upper() for s in raw_stocks.split(",") if s.strip()]
 
-unique_list = list(dict.fromkeys(raw_list)) # Removes duplicates automatically!
+unique_list = list(dict.fromkeys(raw_list)) 
 ticker_list = [f"{s}.NS" for s in unique_list]
 
 st.sidebar.markdown("---")
@@ -120,7 +122,6 @@ volume_multiplier = st.sidebar.slider("RVOL Threshold", 1.5, 3.0, 2.0, 0.1)
 risk_pct = st.sidebar.slider("Stop Loss %", 3.0, 8.0, 5.0, 0.5)
 
 st.sidebar.markdown("---")
-# --- THE RUN SCAN BUTTON ---
 run_scan = st.sidebar.button("🚀 RUN MARKET SCAN", use_container_width=True, type="primary")
 st.sidebar.markdown("---")
 
@@ -134,7 +135,6 @@ sleep_time = refresh_dict[refresh_choice]
 # =====================================================================
 with tab_scanner:
     
-    # ONLY RUN THE HEAVY DOWNLOADS IF THE BUTTON IS CLICKED
     if run_scan:
         results = []
         skipped_count = 0
@@ -322,7 +322,6 @@ with tab_scanner:
             
         my_bar.empty() 
 
-        # SAVE RESULTS TO MEMORY AFTER SCAN FINISHES
         st.session_state['scan_results'] = pd.DataFrame(results)
         st.session_state['skipped_count'] = skipped_count
         
@@ -332,7 +331,6 @@ with tab_scanner:
             st.session_state['scan_results'].to_csv(backup_path, index=False)
         except Exception:
             pass 
-
 
     # --- RENDER UI FROM MEMORY (FAST) ---
     if not st.session_state['scan_results'].empty:
@@ -394,7 +392,7 @@ with tab_scanner:
             st.caption(f"*(Note: {st.session_state['skipped_count']} newly listed or illiquid stocks were excluded because they don't have 200 days of trading history yet).*")
         
         st.markdown("---")
-        st.subheader("⚡ 1-Click Paper Execution Deck")
+        st.subheader("⚡ 1-Click Paper Execution Deck & Analytics")
         
         buy_signals_df = df_results[df_results['Signal'].str.contains("BUY", na=False)]
         
@@ -412,7 +410,7 @@ with tab_scanner:
                     if st.button("📈 Execute Paper Trade", use_container_width=True, type="primary"):
                         trade_data = buy_signals_df[buy_signals_df['Ticker'] == selected_trade].iloc[0]
                         new_row = pd.DataFrame([{
-                            'Buy Date': str(time.strftime('%Y-%m-%d')), # <--- ADDED BUY DATE
+                            'Buy Date': str(time.strftime('%Y-%m-%d')), 
                             'Ticker': selected_trade, 
                             'Type': trade_data['Signal'], 
                             'Entry Price': float(trade_data['Price (₹)']),
@@ -422,6 +420,69 @@ with tab_scanner:
                         }])
                         st.session_state['portfolio'] = pd.concat([st.session_state['portfolio'], new_row], ignore_index=True)
                         st.success(f"Successfully executed {trade_qty} shares of {selected_trade}. Check Tab 2!")
+            
+            # =========================================================================
+            # NEW ADDITION: ADVANCED PLOTLY CHART (PRICE, VOLUME, RSI)
+            # =========================================================================
+            st.markdown(f"📊 **{selected_trade} - 6 Month Advanced Chart**")
+            with st.spinner("Loading advanced interactive chart..."):
+                selected_ticker_symbol = f"{selected_trade}.NS"
+                chart_data = yf.download(selected_ticker_symbol, period="6m", progress=False)
+                
+                if not chart_data.empty:
+                    if isinstance(chart_data.columns, pd.MultiIndex):
+                        chart_data.columns = chart_data.columns.get_level_values(0)
+                        
+                    # Recalculate 50 SMA and RSI for the chart
+                    chart_data['50_SMA'] = chart_data['Close'].rolling(window=50).mean()
+                    
+                    delta = chart_data['Close'].diff()
+                    up = delta.clip(lower=0)
+                    down = -1 * delta.clip(upper=0)
+                    ema_up = up.ewm(com=13, adjust=False).mean()
+                    ema_down = down.ewm(com=13, adjust=False).mean()
+                    rs = ema_up / ema_down
+                    chart_data['RSI'] = 100 - (100 / (1 + rs))
+
+                    # Build the Multi-Pane Plotly Chart
+                    fig = make_subplots(rows=3, cols=1, shared_xaxes=True, 
+                                        vertical_spacing=0.05, 
+                                        subplot_titles=(f'Price (Candlestick) & 50 SMA', 'Volume', 'RSI (14)'), 
+                                        row_width=[0.2, 0.2, 0.6])
+
+                    # Panel 1: Candlestick
+                    fig.add_trace(go.Candlestick(x=chart_data.index,
+                                                 open=chart_data['Open'], high=chart_data['High'],
+                                                 low=chart_data['Low'], close=chart_data['Close'],
+                                                 name='Price'), row=1, col=1)
+                    # Panel 1: SMA
+                    fig.add_trace(go.Scatter(x=chart_data.index, y=chart_data['50_SMA'],
+                                             line=dict(color='orange', width=1.5), name='50 SMA'), row=1, col=1)
+
+                    # Panel 2: Volume (Green for Up days, Red for Down days)
+                    vol_colors = ['#2ecc71' if c >= o else '#e74c3c' for c, o in zip(chart_data['Close'], chart_data['Open'])]
+                    fig.add_trace(go.Bar(x=chart_data.index, y=chart_data['Volume'], marker_color=vol_colors, name='Volume'), row=2, col=1)
+
+                    # Panel 3: RSI
+                    fig.add_trace(go.Scatter(x=chart_data.index, y=chart_data['RSI'],
+                                             line=dict(color='#8e44ad', width=1.5), name='RSI'), row=3, col=1)
+                    # Overbought/Oversold Lines
+                    fig.add_hline(y=70, line_dash="dash", line_color="red", row=3, col=1)
+                    fig.add_hline(y=30, line_dash="dash", line_color="green", row=3, col=1)
+
+                    fig.update_layout(
+                        height=700, 
+                        xaxis_rangeslider_visible=False, 
+                        showlegend=False,
+                        margin=dict(l=20, r=20, t=40, b=20),
+                        paper_bgcolor="rgba(0,0,0,0)",
+                        plot_bgcolor="rgba(0,0,0,0.02)"
+                    )
+                    
+                    st.plotly_chart(fig, use_container_width=True)
+                else:
+                    st.warning("Could not fetch chart data.")
+
         else:
             st.info("No active buy signals right now. The Execution Deck is resting.")
 
@@ -477,7 +538,7 @@ with tab_portfolio:
     with st.expander("⚙️ Manual Ticket Override (Log Custom Trade)", expanded=False):
         form_col1, form_col2, form_col3 = st.columns(3)
         with form_col1:
-            add_date = st.date_input("Buy Date:") # <--- ADDED BUY DATE
+            add_date = st.date_input("Buy Date:") 
             add_tk = st.text_input("Stock Symbol (e.g., RELIANCE):").strip().upper()
             add_type = st.selectbox("Setup Execution Mode:", ["🔥 SNIPER", "🚀 BASE", "⏳ STRATEGIC HOLD"])
         with form_col2:
@@ -490,7 +551,7 @@ with tab_portfolio:
         if st.button("💾 Lock Manual Position Into Database", use_container_width=True):
             if add_tk:
                 new_row = pd.DataFrame([{
-                    'Buy Date': str(add_date), # <--- ADDED BUY DATE
+                    'Buy Date': str(add_date),
                     'Ticker': add_tk, 'Type': add_type, 'Entry Price': add_price,
                     'Quantity': add_qty, 'Stop Loss': add_sl, 'Target': add_tgt
                 }])
@@ -533,7 +594,6 @@ with tab_portfolio:
         c2.metric("Net Liquid Equity", f"₹{curr_eq:,.2f}")
         c3.metric("Floating Net P&L", f"₹{pnl_rs:,.2f}")
 
-        # Dataframe Styling
         def style_portfolio(row):
             pnl = row['Net P&L (₹)']
             color = 'background-color: #eef9f1; color: #2ecc71; font-weight: bold;' if pnl >= 0 else 'background-color: #fdf2f2; color: #e74c3c;'
@@ -541,7 +601,6 @@ with tab_portfolio:
 
         portfolio_df.index = portfolio_df.index + 1
         
-        # Reorder to ensure Buy Date is early in the view
         cols = portfolio_df.columns.tolist()
         if 'Buy Date' in cols:
             cols.insert(0, cols.pop(cols.index('Buy Date')))
@@ -567,7 +626,6 @@ with tab_portfolio:
         )
 
         st.markdown("---")
-        # --- NEW: CLOSED TRADES ARCHIVE LOGIC ---
         with st.expander("🛑 Position Clearance / Close Out Ticket", expanded=False):
             close_col1, close_col2, close_col3 = st.columns(3)
             with close_col1:
@@ -575,7 +633,6 @@ with tab_portfolio:
             with close_col2:
                 sell_date = st.date_input("Sell Date:")
             with close_col3:
-                # Default exit price to live price if available
                 default_exit = float(portfolio_df.loc[cancel_idx, 'Live Price (₹)']) if not pd.isna(portfolio_df.loc[cancel_idx, 'Live Price (₹)']) else 0.0
                 exit_price = st.number_input("Final Exit Price (₹):", value=default_exit, step=0.05)
                 
@@ -583,7 +640,6 @@ with tab_portfolio:
                 actual_idx = cancel_idx - 1
                 trade = st.session_state['portfolio'].iloc[actual_idx]
                 
-                # Calculate final metrics
                 invested = trade['Entry Price'] * trade['Quantity']
                 returned = exit_price * trade['Quantity']
                 final_pnl = returned - invested
@@ -601,14 +657,12 @@ with tab_portfolio:
                     'Return %': final_return
                 }])
                 
-                # Move to Archive and Remove from Active
                 st.session_state['closed_trades'] = pd.concat([st.session_state['closed_trades'], closed_row], ignore_index=True)
                 st.session_state['portfolio'] = st.session_state['portfolio'].drop(st.session_state['portfolio'].index[actual_idx]).reset_index(drop=True)
                 
                 st.warning(f"Trade closed! Realized P&L: ₹{final_pnl:,.2f}. Moved to Archive.")
                 st.rerun()
 
-        # Export Button (Properly indented)
         csv_port = st.session_state['portfolio'].to_csv(index=False).encode('utf-8')
         st.download_button(
             label="📥 Export Active Ledger to CSV", 
@@ -619,7 +673,6 @@ with tab_portfolio:
     else:
         st.info("No active positions to display or export.")
         
-    # --- SHOW CLOSED TRADES ARCHIVE ---
     if not st.session_state['closed_trades'].empty:
         st.markdown("---")
         st.subheader("🗄️ Closed Trades Archive")
@@ -647,7 +700,6 @@ with tab_portfolio:
             }
         )
         
-        # Export Archive
         csv_archive = st.session_state['closed_trades'].to_csv(index=False).encode('utf-8')
         st.download_button(
             label="📥 Export Closed Archive to CSV", 
@@ -663,7 +715,6 @@ with tab_options:
     st.header("📈 Advanced Options Desk: Volatility Matrix")
     st.write("Quantitative payoff grids for Straddle and Strangle strategies across 7 strikes.")
     
-    # 1. Fetch Current Nifty Data
     with st.spinner("Fetching Nifty Options Matrix..."):
         try:
             nifty_data = yf.download("^NSEI", period="1d", progress=False)
@@ -671,9 +722,8 @@ with tab_options:
                 nifty_data.columns = nifty_data.columns.get_level_values(0)
             spot_price = float(nifty_data['Close'].iloc[-1])
         except Exception:
-            spot_price = 22000.0 # Fallback if API fails
+            spot_price = 22000.0
             
-    # Round spot to nearest 50 for realistic Nifty Strikes
     atm_strike = round(spot_price / 50) * 50
     
     col_opt1, col_opt2 = st.columns([1, 2])
@@ -691,12 +741,11 @@ with tab_options:
         st.markdown("*(Assuming simulated premiums for calculation)*")
         call_prem = st.number_input("Est. Call Premium (₹):", value=120.0, step=5.0)
         put_prem = st.number_input("Est. Put Premium (₹):", value=115.0, step=5.0)
-        lot_size = st.number_input("Lot Size:", value=25) # Nifty Lot Size
+        lot_size = st.number_input("Lot Size:", value=25)
 
     with col_opt2:
         st.subheader(f"7-Strike Payoff Matrix: {strat_type}")
         
-        # Generate the 7 Strike Grid
         strikes = [atm_strike + (i * strike_gap) for i in range(-3, 4)]
         
         payoff_data = []
@@ -704,17 +753,15 @@ with tab_options:
             net_pnl = 0
             
             if "Straddle" in strat_type:
-                # Both Call and Put are at ATM Strike
                 call_value = max(0, exp_price - atm_strike)
                 put_value = max(0, atm_strike - exp_price)
                 
                 if "Long" in strat_type:
                     net_pnl = (call_value - call_prem) + (put_value - put_prem)
-                else: # Short
+                else:
                     net_pnl = (call_prem - call_value) + (put_prem - put_value)
                     
             elif "Strangle" in strat_type:
-                # Strangle uses OTM Strikes (ATM + Gap, ATM - Gap)
                 call_strike = atm_strike + strike_gap
                 put_strike = atm_strike - strike_gap
                 
@@ -723,10 +770,9 @@ with tab_options:
                 
                 if "Long" in strat_type:
                     net_pnl = (call_value - call_prem) + (put_value - put_prem)
-                else: # Short
+                else: 
                     net_pnl = (call_prem - call_value) + (put_prem - put_value)
             
-            # Convert to actual Rupee P&L per Lot
             total_pnl = net_pnl * lot_size
             
             status = "🟢 PROFIT" if total_pnl > 0 else "🔴 LOSS"
@@ -749,6 +795,14 @@ with tab_options:
             
         st.dataframe(df_payoff.style.map(highlight_pnl, subset=['Status']), use_container_width=True, hide_index=True)
         
+        st.markdown("---")
+        st.subheader("📊 Strategy Payoff Graph")
+        chart_df = df_payoff.copy()
+        chart_df['Strike'] = chart_df['Expiry Nifty Price'].str.replace('₹', '').str.replace(',', '').astype(float)
+        chart_df = chart_df.set_index('Strike')
+        
+        st.area_chart(chart_df['Net Points P&L'])
+
         if "Long" in strat_type:
             st.info("💡 **Strategy Logic:** You bought both legs. Your maximum loss is limited to the premiums paid. You need a massive breakout/breakdown to achieve unlimited profit.")
         else:
@@ -761,7 +815,6 @@ with tab_options:
         with st.spinner("Spoofing browser and pinging NSE..."):
             result = test_live_option_chain()
             st.write(result)
-
 
 # =====================================================================
 # TAB 4: THE TUTORIAL & STRATEGY GUIDE
